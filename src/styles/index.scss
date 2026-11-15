@@ -1,0 +1,85 @@
+@use './variables';
+@use './mixins' as *;
+@use './patch';
+@use './layout';
+@use './common';
+@use './library';
+@use './project';
+@use './ext-mode';
+@use './login';
+@use './cart';
+@use './updates';
+@use './options';
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+    color: var(--color);
+    background: var(--color-background);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+ul,
+ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+a {
+    color: var(--color-link);
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+}
+
+button {
+    border: none;
+    background: none;
+    padding: 0;
+}
+
+code,
+pre {
+    font-family: var(--font-code);
+}
+
+::selection {
+    background: var(--color-accent-soft);
+}

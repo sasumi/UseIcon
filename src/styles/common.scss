@@ -1,0 +1,436 @@
+@use './mixins' as *;
+
+// ---------- 按钮 ----------
+// 基底与变体对齐 pathbooker：form-button / button-primary / button-tonal / button-small / button-causel
+.ui-btn {
+    @include button-base;
+
+    &.primary,
+    &[data-variant='primary'],
+    &[data-variant='confirm'],
+    &[data-variant='ok'],
+    &.button-primary {
+        @include button-primary;
+    }
+
+    &.danger {
+        color: var(--color-danger);
+        border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
+        background: transparent;
+
+        &:hover {
+            background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+        }
+    }
+
+    &.ghost,
+    &.button-tonal {
+        @include button-tonal;
+    }
+
+    &.causel,
+    &.button-causel {
+        border-radius: 999em;
+    }
+
+    &.small,
+    &.button-small {
+        --element-height: 1.5rem;
+        --element-padding: 0.5em;
+        font-size: var(--font-small);
+    }
+}
+
+// 下拉选择外观（参考 pathbooker 的 select-like）：带边框 + 右侧箭头
+.select-like {
+    @include button-base;
+    padding-right: 0.5em;
+    transition: border-color 0.2s ease-in-out;
+
+    &:hover,
+    &:focus-visible {
+        border-color: var(--color-link);
+        outline: none;
+    }
+
+    &::after {
+        content: "";
+        flex: none;
+        margin-left: auto;
+        width: 0;
+        height: 0;
+        border-left: 0.3em solid transparent;
+        border-right: 0.3em solid transparent;
+        border-top: 0.32em solid currentColor;
+        opacity: 0.55;
+        transition: transform 0.2s linear;
+    }
+
+    &[aria-expanded='true']::after {
+        transform: rotate(180deg);
+    }
+
+    .app-icon {
+        width: 0.9rem;
+        height: 0.9rem;
+    }
+}
+
+.ui-icon-btn {
+    @include icon-button;
+    &.small {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+    &.active {
+        color: var(--color-accent);
+        background: var(--color-accent-soft);
+    }
+
+    &.danger:hover {
+        color: var(--color-danger);
+        background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    }
+}
+
+// ---------- 表单 ----------
+.ui-input,
+.ui-textarea {
+    width: 100%;
+    min-height: var(--element-height);
+    padding: 0.3em 0.55em;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--element-radius);
+    background: var(--color-background);
+    outline: none;
+    font-size: var(--font-small);
+    transition: border-color 0.15s ease;
+
+    &::placeholder {
+        color: var(--color-placeholder);
+    }
+
+    &:focus {
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 1px var(--color-accent);
+    }
+}
+
+.ui-textarea {
+    min-height: 6rem;
+    resize: vertical;
+    line-height: 1.45;
+    font-family: var(--font-code);
+}
+
+.ui-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+
+    > label,
+    > .ui-field-label {
+        font-size: var(--font-small);
+        color: var(--color-secondary);
+    }
+
+    .ui-field-tip {
+        font-size: 0.75rem;
+        color: var(--color-placeholder);
+    }
+}
+
+.ui-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9em;
+}
+
+.ui-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.ui-switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1em;
+    font-size: var(--font-small);
+}
+
+input[type='checkbox'] {
+    accent-color: var(--color-accent);
+    width: 1em;
+    height: 1em;
+    cursor: pointer;
+}
+
+// ---------- 徽章 ----------
+.ui-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    padding: 0.05em 0.45em;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    background: var(--color-background-tertiary);
+    color: var(--color-secondary);
+    border: 1px solid transparent;
+    white-space: nowrap;
+
+    &.admin {
+        color: var(--color-danger);
+        background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    }
+
+    &.editor {
+        color: var(--color-accent);
+        background: var(--color-accent-soft);
+    }
+
+    &.viewer {
+        color: var(--color-secondary);
+        background: var(--color-background-tertiary);
+    }
+
+    &.guest {
+        color: var(--color-warning);
+        background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+    }
+
+    &.public {
+        color: var(--color-success);
+        background: color-mix(in srgb, var(--color-success) 12%, transparent);
+    }
+}
+
+.ui-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    padding: 0.1em 0.45em;
+    border-radius: var(--element-radius);
+    background: var(--color-background-tertiary);
+    color: var(--color-secondary);
+    font-size: 0.72rem;
+}
+
+// ---------- 空状态 ----------
+.ui-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6em;
+    padding: 3em 1em;
+    color: var(--color-secondary);
+    font-size: var(--font-small);
+    text-align: center;
+
+    .ui-empty-icon {
+        width: 2.4rem;
+        height: 2.4rem;
+        opacity: 0.45;
+    }
+}
+
+.ui-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    padding: 2em 0;
+    color: var(--color-secondary);
+    font-size: var(--font-small);
+}
+
+// ---------- SVG 预览 ----------
+.svg-preview {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: inherit;
+    line-height: 0;
+
+    > svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+}
+
+.app-icon {
+    display: inline-flex;
+    width: 1em;
+    height: 1em;
+    line-height: 0;
+    flex: none;
+
+    > svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+}
+
+// ---------- 代码块 ----------
+.code-block {
+    position: relative;
+    background: var(--color-code-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--element-radius);
+    padding: 0.7em 0.8em;
+    font-family: var(--font-code);
+    font-size: 0.78rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow: auto;
+    max-height: 16rem;
+    @include scrollbar(8px);
+}
+
+.ui-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: var(--font-small);
+    color: var(--color-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    flex-wrap: wrap;
+}
+
+.spacer {
+    flex: 1;
+}
+
+.ellipsis {
+    @include ellipsis;
+}
+
+.ui-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 0.4em 0;
+}
+
+// ---------- 头像 ----------
+.ui-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex: none;
+    user-select: none;
+    object-fit: cover;
+    overflow: hidden;
+}
+
+.ui-avatar-group {
+    display: flex;
+
+    .ui-avatar {
+        margin-left: -0.45rem;
+        border: 2px solid var(--color-surface);
+
+        &:first-child {
+            margin-left: 0;
+        }
+    }
+}
+
+// ---------- 拖拽投放区 ----------
+.drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    min-height: 7rem;
+    padding: 1em;
+    border: 1.5px dashed var(--color-border-strong);
+    border-radius: var(--element-radius);
+    color: var(--color-secondary);
+    font-size: var(--font-small);
+    text-align: center;
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease;
+    cursor: pointer;
+
+    &.over {
+        border-color: var(--color-accent);
+        background: var(--color-accent-soft);
+        color: var(--color);
+    }
+
+    strong {
+        color: var(--color);
+        font-weight: 600;
+    }
+}
+
+// ---------- 对话框内容 ----------
+.dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    padding: 0.2em 0.1em 0.6em;
+    max-height: min(70vh, 40rem);
+    overflow: auto;
+    @include scrollbar(8px);
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6em;
+}
+
+.ui-note {
+    font-size: 0.75rem;
+    color: var(--color-secondary);
+    line-height: 1.6;
+
+    code {
+        background: var(--color-background-tertiary);
+        padding: 0.05em 0.3em;
+        border-radius: 3px;
+    }
+}
+
+.ui-alert {
+    padding: 0.55em 0.7em;
+    border-radius: var(--element-radius);
+    font-size: var(--font-small);
+    background: var(--color-accent-soft);
+    color: var(--color);
+
+    &.warning {
+        background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+    }
+
+    &.danger {
+        background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+        color: var(--color-danger);
+    }
+}

@@ -1,0 +1,156 @@
+@use './mixins' as *;
+
+// ---------- 公共库 ----------
+.category-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.1rem 0;
+}
+
+.category-chip {
+    @include button-base;
+    --element-padding: 0.55em;
+    user-select: none;
+
+    &:hover {
+        border-color: var(--color-accent);
+    }
+
+    &.active {
+        background: var(--color-accent-soft);
+        border-color: var(--color-accent);
+        color: var(--color-accent);
+    }
+
+    &.small {
+        --element-height: 1.5rem;
+        --element-padding: 0.45em;
+        font-size: 0.75rem;
+    }
+}
+
+// 搜索框（图标 + 输入框）
+.ui-search {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 14rem;
+    flex: 0 1 24rem;
+    padding-left: 0.5rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--element-radius);
+    background: var(--color-background);
+    color: var(--color-secondary);
+
+    &:focus-within {
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 1px var(--color-accent);
+    }
+
+    .app-icon {
+        width: 0.95rem;
+        height: 0.95rem;
+    }
+
+    .ui-input {
+        border: none;
+        box-shadow: none;
+        background: transparent;
+
+        &:focus {
+            box-shadow: none;
+        }
+    }
+}
+
+// 工具栏里的搜索框收窄到 8em，把空间留给筛选与操作
+.content-toolbar .ui-search {
+    flex: 0 0 8em;
+    min-width: 8em;
+    max-width: 8em;
+}
+
+// ---------- 公共库显示设置面板 ----------
+.minreactui-popover-content.display-popover {
+    width: 15rem;
+    max-width: min(15rem, calc(100vw - 2rem));
+    padding: 1em;
+}
+
+.display-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+
+    &__title {
+        font-size: var(--font-small);
+        font-weight: 600;
+    }
+
+    &__preview {
+        display: flex;
+        justify-content: center;
+        padding: 0.2rem 0;
+    }
+
+    &__reset {
+        align-self: flex-start;
+    }
+}
+
+.display-preview__box {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--element-radius);
+    @include checkerboard(8px, 4px);
+}
+
+.display-preview__icon {
+    display: block;
+}
+
+.display-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+
+    &__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-size: var(--font-small);
+    }
+
+    &__hint {
+        color: var(--color-secondary);
+        font-size: 0.72rem;
+    }
+}
+
+.display-range {
+    width: 100%;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+}
+
+.display-color {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+
+    &__input {
+        width: 2.2rem;
+        height: 1.6rem;
+        padding: 0.1rem;
+        border: 1px solid var(--color-border-strong);
+        border-radius: var(--element-radius);
+        background: var(--color-background);
+        cursor: pointer;
+    }
+}
+
+// ---------- 收藏 ----------

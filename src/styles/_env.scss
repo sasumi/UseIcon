@@ -1,0 +1,39 @@
+@mixin inDark {
+    [data-theme='dark'] &,
+    [data-theme='dark'] {
+        @content;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        [data-theme='auto'] &,
+        [data-theme='auto'] {
+            @content;
+        }
+    }
+}
+
+@mixin inLight {
+    [data-theme='light'] &,
+    [data-theme='light'] {
+        @content;
+    }
+
+    @media (prefers-color-scheme: light) {
+        [data-theme='auto'] &,
+        [data-theme='auto'] {
+            @content;
+        }
+    }
+}
+
+@mixin portrait {
+    @media (max-width: 48em) {
+        @content;
+    }
+}
+
+@mixin landscape {
+    @media (min-width: 48em) {
+        @content;
+    }
+}

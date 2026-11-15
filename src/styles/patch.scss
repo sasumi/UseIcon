@@ -1,0 +1,144 @@
+@use './mixins' as *;
+
+// minreact-ui 自带 --minreactui-* 主题变量，这里接到应用变量上，弹窗 / 菜单 / 气泡才会跟随明暗主题
+:root body {
+    --minreactui-panel-radius: var(--panel-radius);
+    --minreactui-element-height: var(--element-height);
+    --minreactui-element-padding: var(--element-padding);
+    --minreactui-element-radius: var(--element-radius);
+    --minreactui-color-background: var(--color-background);
+    --minreactui-color-background-hover: var(--color-hover);
+    --minreactui-color-element-border: var(--color-border-strong);
+    --minreactui-color-element-border-secondary: var(--color-border);
+    --minreactui-color-element-border-active: var(--color-border-strong);
+    --minreactui-color-danger: var(--color-danger);
+    --minreactui-color-warning: var(--color-warning);
+    --minreactui-color-info: var(--color-accent);
+    --minreactui-color-success: var(--color-success);
+    --minreactui-color-hight: var(--color-accent);
+    --minreactui-panel-shadow: var(--panel-shadow);
+    --minreactui-panel-shadow-lite: var(--panel-shadow-lite);
+    --minreactui-dialog-zindex: var(--dialog-zindex);
+    --minreactui-toast-zindex: var(--toast-zindex);
+}
+
+.minreactui-dialog {
+    color: var(--color);
+    border: 1px solid var(--color-border);
+    border-radius: var(--panel-radius);
+    background: var(--color-background);
+    font-family: var(--font-family);
+}
+
+.minreactui-dialog-wrap .minreactui-dialog-masker {
+    backdrop-filter: blur(1px);
+}
+
+.minreactui-dialog-title {
+    font-weight: 600;
+}
+
+.minreactui-dialog-content {
+    color: var(--color);
+    font-size: var(--font-small);
+}
+
+.minreactui-dialog-actions {
+    gap: 0.6em;
+
+    > button {
+        @include button-base;
+
+        &[data-variant='primary'],
+        &[data-variant='confirm'],
+        &[data-variant='ok'] {
+            @include button-primary;
+        }
+    }
+}
+
+.minreactui-dropdown-menu {
+    min-width: 9em;
+}
+
+// 菜单项宽松一些（参考 pathbooker 的点按区与间距）
+.minreactui-menu,
+.minreactui-dropdown-menu {
+    padding: 0.4em 0.35em;
+
+    .minreactui-menu-item {
+        padding: 0.5em 0.8em;
+        gap: 0.5em;
+        border-radius: var(--element-radius);
+        font-size: var(--font-small);
+        line-height: 1.35;
+
+        .minreactui-menu-item-icon {
+            width: 1.3em;
+            margin-left: 0;
+        }
+
+        .app-icon {
+            width: 1em;
+            height: 1em;
+        }
+    }
+
+    .minreactui-menu-divider {
+        margin: 0.35em 0.5em;
+    }
+}
+
+.minreactui-toastify-container {
+    z-index: var(--toast-zindex);
+}
+
+.minreactui-tabs {
+    &__triggers {
+        display: flex;
+        gap: 0.4em;
+        border-bottom: 1px solid var(--color-border);
+        margin-bottom: 0.9em;
+    }
+
+    &__trigger {
+        padding: 0.4em 0.6em;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        color: var(--color-secondary);
+        font-size: var(--font-small);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--color);
+        }
+
+        &[data-state='active'] {
+            color: var(--color);
+            border-bottom-color: var(--color-accent);
+            font-weight: 600;
+        }
+    }
+}
+
+:where(.minreactui-dialog-wrap, .minreactui-popover-content-wrap) {
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+
+    ul,
+    ol {
+        margin: 0;
+        padding: 0;
+    }
+
+    li {
+        list-style: none;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+        font-family: var(--font-family);
+    }
+}

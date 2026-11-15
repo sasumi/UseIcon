@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>UseIcon · 图标管理平台</title>
+        <script>
+            // 首屏前应用主题，避免亮暗切换闪烁（与 src/store/themeStore.ts 保持一致的键）
+            (function () {
+                try {
+                    var saved = localStorage.getItem("useicon:theme");
+                    var theme = saved === "light" || saved === "dark" || saved === "auto" ? saved : "auto";
+                    document.documentElement.setAttribute("data-theme", theme);
+                } catch (error) {
+                    document.documentElement.setAttribute("data-theme", "auto");
+                }
+            })();
+        </script>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module" src="/src/main.tsx"></script>
+    </body>
+</html>

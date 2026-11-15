@@ -1,0 +1,101 @@
+@use './env' as *;
+@use './mixins' as *;
+
+.updates-page {
+    max-width: 60rem;
+
+    ul {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}
+
+.updates-current {
+    margin-bottom: 0.9rem;
+    font-size: var(--font-small);
+    color: var(--color-secondary);
+}
+
+.updates-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.85rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--element-radius);
+
+    &:nth-child(odd) {
+        background: var(--color-background-secondary);
+    }
+
+    &:first-child {
+        border-left: 3px solid var(--color-accent);
+        background: var(--color-accent-soft);
+
+        .updates-version {
+            color: var(--color);
+            font-weight: 600;
+        }
+    }
+}
+
+.updates-version {
+    flex: 0 0 4rem;
+    color: var(--color-secondary);
+    font-family: var(--font-code);
+    font-size: 0.8rem;
+}
+
+.updates-log {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+}
+
+.updates-line {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    word-break: break-word;
+}
+
+.updates-tag {
+    flex: none;
+    padding: 0 0.4em;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    font-size: 0.68rem;
+    line-height: 1.5;
+    opacity: 0.85;
+
+    &[data-mark='+'] {
+        color: var(--color-success);
+    }
+
+    &[data-mark='*'] {
+        color: var(--color-info);
+    }
+
+    &[data-mark='!'] {
+        color: var(--color-warning);
+    }
+
+    &[data-mark='-'] {
+        color: var(--color-danger);
+    }
+}
+
+@include portrait {
+    .updates-item {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+
+    .updates-version {
+        flex: none;
+        font-weight: 600;
+    }
+}

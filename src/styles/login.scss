@@ -1,0 +1,201 @@
+@use './env' as *;
+@use './mixins' as *;
+
+.boot-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    height: 100%;
+    color: var(--color-secondary);
+    font-size: 0.85rem;
+    background: var(--color-background);
+}
+
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+    min-height: 100%;
+    padding: 2rem;
+    background: var(--color-background);
+    overflow: auto;
+
+    @include portrait {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: stretch;
+    }
+}
+
+.login-intro {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    max-width: 21rem;
+
+    @include portrait {
+        max-width: none;
+    }
+}
+
+.login-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+
+    h1 {
+        font-size: 1.35rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+    }
+
+    p {
+        font-size: 0.78rem;
+        color: var(--color-secondary);
+    }
+}
+
+.login-brand__logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    flex: none;
+    border-radius: 8px;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.login-features {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+
+    li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--color-secondary);
+
+        .app-icon {
+            width: 0.95rem;
+            height: 0.95rem;
+            margin-top: 0.15rem;
+            color: var(--color-accent);
+        }
+    }
+}
+
+.login-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    width: 24rem;
+    max-width: 100%;
+
+    @include portrait {
+        width: 100%;
+    }
+}
+
+.login-iframe {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: var(--panel-radius);
+    background: var(--color-surface);
+    box-shadow: var(--panel-shadow-lite);
+    color-scheme: light;
+}
+
+// ---------- 个人信息（布局参考 pathbooker） ----------
+.user-profile {
+    position: relative;
+
+    &__avatar {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 4em;
+        height: 4em;
+        border-radius: 50%;
+        background: var(--color-background-secondary);
+        overflow: hidden;
+        cursor: pointer;
+
+        &:hover .user-profile__avatar-mask {
+            opacity: 1;
+        }
+    }
+
+    &__avatar-mask {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgb(0 0 0 / 45%);
+        color: #fff;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+
+        .app-icon {
+            width: 1.2rem;
+            height: 1.2rem;
+        }
+    }
+
+    &__avatar-loading {
+        position: absolute;
+        inset: 0;
+        background: rgb(0 0 0 / 35%);
+    }
+
+    &__metas {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75em;
+        max-width: calc(100% - 5em);
+
+        > li > label {
+            display: block;
+            font-weight: 600;
+        }
+
+        > li > var {
+            color: var(--color-secondary);
+            font-style: normal;
+            word-break: break-all;
+        }
+    }
+
+    &__editor {
+        min-height: 1.4em;
+    }
+
+    &__state {
+        &.is-normal {
+            color: var(--color-success);
+        }
+
+        &.is-canceled {
+            color: var(--color-secondary);
+        }
+
+        &.is-forbidden {
+            color: var(--color-danger);
+        }
+    }
+
+    &__btns {
+        display: flex;
+        gap: 0.5em;
+        padding-top: 1.5em;
+    }
+}

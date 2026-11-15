@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <title>UseIcon 采集</title>
+        <style>
+            :root {
+                color-scheme: dark;
+            }
+            * {
+                box-sizing: border-box;
+                font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+            }
+            body {
+                width: 280px;
+                margin: 0;
+                padding: 12px;
+                background: #1e1e1e;
+                color: #ccc;
+                font-size: 12px;
+                line-height: 1.5;
+            }
+            .head {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+            .logo {
+                width: 26px;
+                height: 26px;
+                border-radius: 6px;
+                background: #007acc;
+                color: #fff;
+                font-size: 11px;
+                font-weight: 700;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .head div {
+                display: flex;
+                flex-direction: column;
+            }
+            strong {
+                color: #fff;
+                font-size: 13px;
+            }
+            label {
+                display: block;
+                color: #9d9d9d;
+                font-size: 11px;
+                margin-bottom: 4px;
+            }
+            input {
+                width: 100%;
+                height: 28px;
+                padding: 0 8px;
+                border-radius: 4px;
+                border: 1px solid #4d4d4d;
+                background: #252526;
+                color: #ccc;
+                font-size: 12px;
+                outline: none;
+            }
+            input:focus {
+                border-color: #007acc;
+            }
+            .row {
+                display: flex;
+                gap: 6px;
+                margin-top: 8px;
+            }
+            button {
+                height: 28px;
+                padding: 0 10px;
+                border-radius: 4px;
+                border: 1px solid #4d4d4d;
+                background: #2d2d2d;
+                color: #ccc;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            button:hover {
+                background: #37373d;
+            }
+            button.primary {
+                background: #0e639c;
+                border-color: #0e639c;
+                color: #fff;
+            }
+            button.primary:hover {
+                background: #1177bb;
+            }
+            .row button {
+                flex: 1;
+            }
+            .link {
+                margin-top: 8px;
+                width: 100%;
+                background: transparent;
+                border-color: transparent;
+                color: #4daafc;
+            }
+            .link:hover {
+                background: #2a2d2e;
+            }
+            .tip {
+                margin: 10px 0 0;
+                padding-top: 8px;
+                border-top: 1px solid #3c3c3c;
+                color: #8c8c8c;
+                font-size: 10px;
+                line-height: 1.7;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="head">
+            <span class="logo">UI</span>
+            <div>
+                <strong>UseIcon 采集</strong>
+                <span id="status" style="color: #9d9d9d">从页面采集 SVG 图标</span>
+            </div>
+        </div>
+        <label for="siteUrl">UseIcon 站点地址</label>
+        <input id="siteUrl" type="url" placeholder="http://localhost:5190/" />
+        <div class="row">
+            <button id="save" class="primary" type="button">保存</button>
+            <button id="panel" type="button">打开采集面板</button>
+        </div>
+        <button id="openSite" class="link" type="button">打开 UseIcon 站点</button>
+        <p class="tip">
+            1. 先在 UseIcon 站点登录，扩展通过隐藏的桥接页复用同一份本地数据。<br />
+            2. iconfont 字体图标请点「复制 SVG」后用「从剪贴板导入」；IconPark 直接抓取。<br />
+            3. 采集到的图标会批量写入所选项目（需要协作人员及以上角色）。
+        </p>
+        <script src="popup.js"></script>
+    </body>
+</html>

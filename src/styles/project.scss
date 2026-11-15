@@ -1,0 +1,531 @@
+@use './mixins' as *;
+
+// ---------- 项目头部 ----------
+.project-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.project-header__main {
+    min-width: 0;
+    flex: 1 1 22rem;
+}
+
+.project-header__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+
+    h2 {
+        font-size: 1.15rem;
+        font-weight: 600;
+    }
+}
+
+.project-header__desc {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--color-secondary);
+}
+
+.project-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+// ---------- 项目工具栏（全选 + 批量操作 + 搜索与标签筛选居右） ----------
+.project-toolbar {
+    padding: 0.75rem 0 0.9rem;
+
+    // 搜索框：仅保留底边线，高度更紧凑
+    .project-toolbar__search {
+        flex: 0 0 8em;
+        min-width: 8em;
+        max-width: 8em;
+        height: auto;
+        padding: 0 0 0.1rem;
+        border: none;
+        border-bottom: 1px solid var(--color-border-strong);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+
+        &:focus-within {
+            border-bottom-color: var(--color-accent);
+            box-shadow: none;
+        }
+
+        .ui-input {
+            height: 1.5rem;
+            min-height: 1.5rem;
+            padding: 0 0.2rem;
+            border: none;
+            background: transparent;
+            font-size: 0.78rem;
+        }
+
+        .app-icon {
+            width: 0.8rem;
+            height: 0.8rem;
+        }
+    }
+
+    // 标签筛选：select-like 触发器（无边框 tonal）
+    .project-toolbar__tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35em;
+        height: 1.5rem;
+        max-width: 9rem;
+        padding: 0 0.5em;
+        border-radius: var(--element-radius);
+        color: var(--color);
+        font-size: var(--font-small);
+        white-space: nowrap;
+        cursor: pointer;
+        overflow: hidden;
+
+        &.has-value {
+            color: var(--color-accent);
+        }
+
+        &::after {
+            content: "";
+            flex: none;
+            width: 0;
+            height: 0;
+            border-left: 0.3em solid transparent;
+            border-right: 0.3em solid transparent;
+            border-top: 0.32em solid currentColor;
+            opacity: 0.55;
+        }
+
+        .app-icon {
+            width: 0.85rem;
+            height: 0.85rem;
+            flex: none;
+        }
+    }
+}
+
+.batch-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+
+    .batch-actions__count {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--color-accent);
+    }
+}
+
+// ---------- 图标卡片 ----------
+.icon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.2rem, 1fr));
+    gap: 0.6rem;
+
+    > li {
+        aspect-ratio: 1;
+        min-width: 0;
+    }
+}
+
+.icon-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.35rem;
+    height: 100%;
+    padding: 1.95rem 0.55rem 0.45rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--element-radius);
+    background: var(--color-surface);
+    cursor: pointer;
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease;
+
+    &:hover {
+        border-color: var(--color-accent);
+        background: var(--color-background-secondary);
+
+        .icon-card__check {
+            opacity: 1;
+        }
+    }
+
+    &.selected {
+        border-color: var(--color-accent);
+        background: var(--color-accent-soft);
+
+        .icon-card__check {
+            opacity: 1;
+        }
+    }
+
+    .icon-card__check {
+        position: absolute;
+        top: 0.3rem;
+        left: 0.35rem;
+        z-index: 1;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+    }
+
+    .icon-card__preview {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        border-radius: var(--element-radius);
+        @include checkerboard(8px, 4px);
+
+        .svg-preview {
+            display: block;
+        }
+    }
+
+    .icon-card__quick-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.3rem;
+        height: 1.3rem;
+        border-radius: 4px;
+        border: 1px solid var(--color-border);
+        background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+        color: var(--color-secondary);
+        cursor: pointer;
+        transition:
+            color 0.15s ease,
+            border-color 0.15s ease,
+            background 0.15s ease;
+
+        .app-icon {
+            width: 0.78rem;
+            height: 0.78rem;
+        }
+
+        &:hover {
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+            background: var(--color-surface);
+        }
+
+        &.active-favorite {
+            color: var(--color-warning);
+            border-color: color-mix(in srgb, var(--color-warning) 55%, transparent);
+            background: color-mix(in srgb, var(--color-warning) 14%, var(--color-surface));
+        }
+
+        &.active-cart {
+            color: var(--color-accent);
+            border-color: var(--color-accent);
+            background: var(--color-accent-soft);
+        }
+    }
+
+    .icon-card__meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        min-width: 0;
+        text-align: center;
+    }
+
+    .icon-card__name {
+        font-size: 0.76rem;
+        @include ellipsis;
+    }
+
+    .icon-card__tags {
+        font-size: 0.66rem;
+        color: var(--color-secondary);
+        @include ellipsis;
+    }
+
+    .icon-card__actions {
+        position: absolute;
+        top: 0.32rem;
+        right: 0.32rem;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 0.15rem;
+    }
+}
+
+// ---------- 侧栏项目列表 ----------
+.project-list__search {
+    margin: 0 0.1rem 0.45rem;
+    font-size: 0.76rem;
+    min-width: 0;
+    flex: 1 1 auto;
+
+    .ui-input {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+.project-list__item {
+    min-width: 0;
+
+    .ellipsis {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+.project-list__more {
+    min-height: 1.2rem;
+    padding: 0.35rem 0.2rem 0.1rem;
+    font-size: 0.7rem;
+    color: var(--color-secondary);
+    text-align: center;
+}
+
+// ---------- 项目设置 ----------
+.settings-members {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.settings-member-add {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+
+    .ui-input {
+        flex: 1 1 12rem;
+    }
+}
+
+.settings-member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.settings-member {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--element-radius);
+    background: var(--color-background);
+
+    .settings-member__info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .settings-member__name {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        @include ellipsis;
+    }
+
+    .settings-member__email {
+        font-size: 0.7rem;
+        color: var(--color-secondary);
+        @include ellipsis;
+    }
+}
+
+.settings-danger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid color-mix(in srgb, var(--color-danger) 40%, transparent);
+    border-radius: var(--element-radius);
+    background: color-mix(in srgb, var(--color-danger) 6%, transparent);
+}
+
+.settings-placeholders {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-top: 0.35rem;
+
+    li {
+        font-size: 0.74rem;
+        color: var(--color-secondary);
+    }
+
+    code {
+        color: var(--color-accent);
+    }
+}
+
+// ---------- 上传 / 候选列表 ----------
+.upload-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.upload-candidates {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.candidate-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    max-height: 15rem;
+    overflow: auto;
+    @include scrollbar(8px);
+}
+
+.candidate-item {
+    display: grid;
+    grid-template-columns: auto auto 1fr 1fr auto;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.25rem 0.35rem;
+    border-radius: var(--element-radius);
+
+    &:nth-child(odd) {
+        background: var(--color-background-secondary);
+    }
+
+    .svg-preview {
+        padding: 2px;
+        border-radius: 3px;
+        @include checkerboard(6px, 3px);
+    }
+
+    .ui-input {
+        min-width: 0;
+    }
+}
+
+// ---------- 图标详情 ----------
+.detail-head {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.detail-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 7rem;
+    height: 7rem;
+    flex: none;
+    border-radius: var(--panel-radius);
+    border: 1px solid var(--color-border);
+    @include checkerboard(12px, 6px);
+}
+
+.detail-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1 1 16rem;
+    min-width: 0;
+}
+
+.detail-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.detail-code {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+// ---------- 公共库挑选 ----------
+.library-pick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr));
+    gap: 0.4rem;
+    max-height: 24rem;
+    overflow: auto;
+    @include scrollbar(8px);
+}
+
+.library-pick {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.55rem 0.35rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--element-radius);
+    cursor: pointer;
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease;
+
+    .svg-preview {
+        width: 3em !important;
+        height: 3em !important;
+        padding: 0.42em;
+        border-radius: 4px;
+        @include checkerboard(6px, 3px);
+    }
+
+    &:hover {
+        border-color: var(--color-accent);
+    }
+
+    &.selected {
+        border-color: var(--color-accent);
+        background: var(--color-accent-soft);
+    }
+
+    .library-pick__name {
+        font-size: 0.68rem;
+        color: var(--color-secondary);
+        max-width: 100%;
+        @include ellipsis;
+    }
+
+    .library-pick__check {
+        position: absolute;
+        top: 0.15rem;
+        right: 0.2rem;
+        color: var(--color-accent);
+
+        .app-icon {
+            width: 0.8rem;
+            height: 0.8rem;
+        }
+    }
+}

@@ -1,0 +1,91 @@
+@use './env' as *;
+
+:root {
+    color-scheme: light;
+
+    --font-size: 14px;
+    --font-small: 0.82rem;
+    --font-family: ui-sans-serif, system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    --font-code: 'Cascadia Code', Consolas, 'Courier New', monospace;
+    --line-height: 1.5;
+
+    // VSCode 亮色配色
+    --color: #1f1f1f;
+    --color-secondary: #616161;
+    --color-placeholder: #8c8c8c;
+    --color-link: #005fb8;
+
+    --color-background: #ffffff;
+    --color-background-secondary: #f3f3f3;
+    --color-background-tertiary: #ebebeb;
+    --color-background-lite: #f3f3f3;
+    --color-surface: #ffffff;
+    --color-sidebar: #f8f8f8;
+    --color-titlebar: #f8f8f8;
+    --color-on-accent: #ffffff;
+
+    --color-border: #e2e2e2;
+    --color-border-strong: #c9c9c9;
+    --color-hover: #e8e8e8;
+    --color-active: #dcdcdc;
+    --color-accent: #005fb8;
+    --color-accent-soft: #005fb81a;
+    --color-danger: #cd3131;
+    --color-warning: #bf8803;
+    --color-success: #1a7f37;
+    --color-info: #0066bf;
+
+    --color-scrollbar: #c9c9c9;
+    --color-scrollbar-hover: #a8a8a8;
+    --color-code-background: #f6f8fa;
+
+    --panel-radius: 6px;
+    --panel-shadow: 0 6px 18px rgb(0 0 0 / 12%);
+    --panel-shadow-lite: 1px 1px 4px rgb(0 0 0 / 10%);
+
+    --element-height: 2rem;
+    --element-padding: 0.4em;
+    --element-radius: 4px;
+
+    --activity-bar-width: 3.2rem;
+
+    --dialog-zindex: 1000;
+    --toast-zindex: 1200;
+    --overlay-zindex: 1100;
+}
+
+@include inDark {
+    color-scheme: dark;
+
+    --color: #cccccc;
+    --color-secondary: #9d9d9d;
+    --color-placeholder: #6b6b6b;
+    --color-link: #4daafc;
+
+    --color-background: #1e1e1e;
+    --color-background-secondary: #252526;
+    --color-background-tertiary: #2d2d2d;
+    --color-background-lite: #2a2d2e;
+    --color-surface: #252526;
+    --color-sidebar: #252526;
+    --color-titlebar: #323233;
+    --color-on-accent: #ffffff;
+
+    --color-border: #3c3c3c;
+    --color-border-strong: #4d4d4d;
+    --color-hover: #2a2d2e;
+    --color-active: #37373d;
+    --color-accent: #007acc;
+    --color-accent-soft: #007acc26;
+    --color-danger: #f14c4c;
+    --color-warning: #cca700;
+    --color-success: #3fb950;
+    --color-info: #3794ff;
+
+    --color-scrollbar: #424242;
+    --color-scrollbar-hover: #5a5a5a;
+    --color-code-background: #1b1b1b;
+
+    --panel-shadow: 0 6px 18px rgb(0 0 0 / 50%);
+    --panel-shadow-lite: 1px 1px 4px rgb(0 0 0 / 45%);
+}
