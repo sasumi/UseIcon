@@ -22,6 +22,7 @@ interface ProjectState {
     refreshCurrent: () => Promise<void>; // 重新拉取当前项目
     setCurrent: (project: Project | null) => void; // 直接替换当前项目（更新设置后）
     updateIcons: (icons: IconItem[]) => void; // 局部更新图标列表
+    setIconsOrder: (orderedIds: string[]) => void; // 按给定顺序重排本地图标
     removeIcons: (iconIds: string[]) => void; // 局部删除图标
     reset: () => void; // 清空状态
 }
@@ -100,6 +101,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     updateIcons: (updated) => {
         const map = new Map(updated.map((icon) => [icon.id, icon]));
         set({ icons: get().icons.map((icon) => map.get(icon.id) || icon) });
+    },
+    setIconsOrder: (orderedIds) => {
+        const map = new Map(get().icons.map((icon) => [icon.id, icon]));
+        const next = orderedIds.map((id) => map.get(id)).filter((icon): icon is IconItem => Boolean(icon));
+        get().icons.forEach((icon) => {
+            if (!orderedIds.includes(icon.id)) {
+                next.push(icon);
+            }
+        });
+        set({ icons: next });
     },
     removeIcons: (iconIds) => {
         const ids = new Set(iconIds);

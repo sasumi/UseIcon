@@ -68,6 +68,7 @@ export interface IconItem {
     createdBy: string; // 创建者用户 ID
     createdAt: number; // 创建时间戳
     updatedAt: number; // 更新时间戳
+    order?: number; // 自定义排序序号（升序，越小越靠前）
 }
 
 /** 公共库图标 */

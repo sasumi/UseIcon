@@ -28,13 +28,13 @@ const ensureUniqueName = (projectId: string, name: string, excludeId?: string): 
     return uniqueIconName(name, existed);
 };
 
-/** 项目图标列表 */
+/** 项目图标列表（按自定义排序值，未设置时按创建时间） */
 export const listIcons = (projectId: string): Promise<IconItem[]> =>
     mockResponse(() => {
         requireProjectAccess(projectId, "view");
         return readDatabase()
             .icons.filter((item) => item.projectId === projectId)
-            .sort((a, b) => a.createdAt - b.createdAt)
+            .sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER) || a.createdAt - b.createdAt)
             .map(clone);
     });
 
@@ -80,6 +80,10 @@ const saveIcons = (projectId: string, inputs: IconInput[]): IconItem[] => {
         const project = db.projects.find((item) => item.id === projectId);
         const created: IconItem[] = [];
         const collected: string[] = db.icons.filter((item) => item.projectId === projectId).map((item) => item.className);
+        let nextOrder =
+            db.icons
+                .filter((item) => item.projectId === projectId)
+                .reduce((max, item) => Math.max(max, item.order ?? -1), -1) + 1;
         inputs.forEach((input) => {
             let svg: string;
             try {
@@ -99,6 +103,7 @@ const saveIcons = (projectId: string, inputs: IconInput[]): IconItem[] => {
                 createdBy: user!.id,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
+                order: nextOrder++,
             };
             db.icons.push(icon);
             created.push(icon);
@@ -149,6 +154,21 @@ export const deleteIcons = (iconIds: string[]): Promise<void> =>
         mutateDatabase((db) => {
             const ids = new Set(iconIds);
             db.icons = db.icons.filter((item) => !ids.has(item.id));
+        });
+    });
+
+/** 保存自定义排序（按传入顺序写入 order） */
+export const reorderIcons = (projectId: string, orderedIds: string[]): Promise<void> =>
+    mockResponse(() => {
+        assert(orderedIds.length > 0, "没有可排序的图标");
+        requireProjectAccess(projectId, "edit");
+        mutateDatabase((db) => {
+            orderedIds.forEach((iconId, index) => {
+                const icon = db.icons.find((item) => item.id === iconId && item.projectId === projectId);
+                if (icon) {
+                    icon.order = index;
+                }
+            });
         });
     });
 

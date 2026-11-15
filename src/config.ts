@@ -32,6 +32,9 @@ export const CODE_TYPES_STORAGE_KEY = "useicon:code-types";
 /** ExtMode 代码区高度记忆键 */
 export const EXTMODE_CODE_HEIGHT_KEY = "useicon:extmode-code-height";
 
+/** 项目图标排序偏好键前缀（按项目记忆） */
+export const PROJECT_SORT_STORAGE_PREFIX = "useicon:project-sort:";
+
 /** 模拟网络延迟（毫秒） */
 export const MOCK_DELAY = 160;
 

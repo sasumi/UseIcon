@@ -21,6 +21,7 @@ export const IconCard = ({
     previewPadding,
     previewColor,
     previewBackground,
+    draggable,
     code,
     selected = false,
     selectable = false,
@@ -46,6 +47,7 @@ export const IconCard = ({
     previewPadding?: number; // 预览内边距（px），默认取全局显示设置
     previewColor?: string; // 预览图标颜色，默认取全局显示设置
     previewBackground?: string; // 预览背景色，默认取全局显示设置
+    draggable?: boolean; // 是否允许拖出代码（默认有 code 时允许）
     code?: string; // 拖拽 / 复制的代码
     selected?: boolean; // 是否选中
     selectable?: boolean; // 是否可多选
@@ -126,13 +128,15 @@ export const IconCard = ({
         }
     };
 
+    const canDragCode = draggable ?? Boolean(code);
+
     return (
         <div
             className={`icon-card ${selected ? "selected" : ""}`}
-            draggable={Boolean(code)}
+            draggable={canDragCode}
             title={code ? `${icon.className}\n拖动可插入代码` : icon.className}
             onDragStart={(event) => {
-                if (!code) {
+                if (!canDragCode || !code) {
                     return;
                 }
                 event.dataTransfer.setData("text/plain", code);

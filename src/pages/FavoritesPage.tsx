@@ -98,21 +98,6 @@ export const FavoritesPage = () => {
                             <span className="nav-item__count">{favorites.length}</span>
                         </div>
                     </div>
-                    {tags.length > 0 && (
-                        <>
-                            <div className="ui-divider" />
-                            <div className="category-chips">
-                                {tags.map((item) => (
-                                    <span key={item} className={`category-chip ${tag === item ? "active" : ""}`} onClick={() => setTag(tag === item ? "" : item)}>
-                                        {item}
-                                    </span>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-                <div className="side-panel__footer">
-                    <p className="ui-note">收藏是快照：即使原图标被删除，收藏里的 SVG 依然可用。</p>
                 </div>
             </SidePanel>
 
@@ -128,6 +113,20 @@ export const FavoritesPage = () => {
                     </span>
                     <DisplayControl />
                 </div>
+
+                {tags.length > 0 && (
+                    <div className="category-chips favorites-tags">
+                        {tags.map((item) => (
+                            <span
+                                key={item}
+                                className={`category-chip ${tag === item ? "active" : ""}`}
+                                onClick={() => setTag(tag === item ? "" : item)}
+                            >
+                                {item}
+                            </span>
+                        ))}
+                    </div>
+                )}
 
                 {favorites.length === 0 ? (
                     <EmptyState text="还没有收藏：在公共库或项目图标上点击「收藏」即可" icon="star">

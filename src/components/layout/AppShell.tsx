@@ -76,7 +76,7 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
                 <Clickable
                     tag="span"
                     role="button"
-                    className="activity-logo"
+                    className={`activity-logo ${activeKey === "library" ? "is-home" : ""}`}
                     title={`UseIcon v${APP_VERSION}`}
                     onClick={() => navigate("/library")}
                 >

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, Select, Toast } from "minreact-ui";
+import { Dialog, DropdownMenu, Select, Toast } from "minreact-ui";
+import type { MenuEntry } from "minreact-ui";
 import { api } from "@/api";
+import { PROJECT_SORT_STORAGE_PREFIX } from "@/config";
 import { extModePath, navigate, projectPath } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
 import { openLoginDialog } from "@/store/loginDialogStore";
@@ -24,6 +26,31 @@ import { PickLibraryDialog } from "@/components/project/PickLibraryDialog";
 import { ProjectFormDialog } from "@/components/project/ProjectFormDialog";
 import { ProjectSettingsDialog } from "@/components/project/ProjectSettingsDialog";
 import { UploadDialog } from "@/components/project/UploadDialog";
+
+type SortMode = "default" | "name-asc" | "name-desc" | "custom";
+
+const SORT_ITEMS: MenuEntry[] = [
+    { value: "default", label: "默认顺序", icon: <AppIcon name="layers" /> },
+    { value: "name-asc", label: "名称 A → Z", icon: <AppIcon name="arrow-down" /> },
+    { value: "name-desc", label: "名称 Z → A", icon: <AppIcon name="arrow-up" /> },
+    { value: "custom", label: "自定义排序", icon: <AppIcon name="move" /> },
+];
+
+const SORT_LABELS: Record<SortMode, string> = {
+    default: "默认顺序",
+    "name-asc": "名称 A → Z",
+    "name-desc": "名称 Z → A",
+    custom: "自定义排序",
+};
+
+const readSortMode = (projectId: string): SortMode => {
+    try {
+        const saved = localStorage.getItem(`${PROJECT_SORT_STORAGE_PREFIX}${projectId}`);
+        return saved && saved in SORT_LABELS ? (saved as SortMode) : "default";
+    } catch {
+        return "default";
+    }
+};
 
 /** 项目工作区：侧栏项目列表 + 主区图标管理（未指定项目时默认打开第一个） */
 export const ProjectPage = ({ projectId }: { projectId?: string }) => {
@@ -51,6 +78,8 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     const [optimizeOpen, setOptimizeOpen] = useState(false);
     const [renameOpen, setRenameOpen] = useState(false);
     const [detail, setDetail] = useState<IconItem | null>(null);
+    const [sortMode, setSortMode] = useState<SortMode>("default");
+    const [dragIconId, setDragIconId] = useState<string | null>(null);
 
     const favorites = useLibraryStore((state) => state.favorites);
     const addFavorite = useLibraryStore((state) => state.addFavorite);
@@ -82,6 +111,11 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
         }
     }, [projectId, loadProject]);
 
+    // 每个项目分别记住排序偏好
+    useEffect(() => {
+        setSortMode(projectId ? readSortMode(projectId) : "default");
+    }, [projectId]);
+
     const access = useMemo(() => getProjectAccess(project, user), [project, user]);
 
     const tags = useMemo(() => {
@@ -92,7 +126,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
 
     const filtered = useMemo(() => {
         const query = keyword.trim().toLowerCase();
-        return icons.filter((icon) => {
+        const matched = icons.filter((icon) => {
             if (tag && !icon.tags.includes(tag)) {
                 return false;
             }
@@ -101,9 +135,17 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
             }
             return icon.className.toLowerCase().includes(query) || icon.tags.some((item) => item.toLowerCase().includes(query));
         });
-    }, [icons, keyword, tag]);
+        if (sortMode === "name-asc") {
+            return [...matched].sort((a, b) => a.className.localeCompare(b.className));
+        }
+        if (sortMode === "name-desc") {
+            return [...matched].sort((a, b) => b.className.localeCompare(a.className));
+        }
+        return matched;
+    }, [icons, keyword, tag, sortMode]);
 
     const selectedIcons = useMemo(() => icons.filter((icon) => selected.includes(icon.id)), [icons, selected]);
+    const canSort = sortMode === "custom" && access.canEdit;
     const template = project?.codeTemplate || "";
     const iconSize = project?.iconSize || 24;
     const activeProjectId = project?.id || projectId || "";
@@ -137,6 +179,42 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
 
     const toggleIconCart = (icon: IconItem) => {
         toggleCart(cartItemFromProjectIcon(activeProjectId, icon));
+    };
+
+    const changeSort = (value: unknown) => {
+        if (typeof value !== "string" || !(value in SORT_LABELS)) {
+            return;
+        }
+        const next = value as SortMode;
+        setSortMode(next);
+        if (projectId) {
+            try {
+                localStorage.setItem(`${PROJECT_SORT_STORAGE_PREFIX}${projectId}`, next);
+            } catch {
+                // 忽略存储异常
+            }
+        }
+    };
+
+    /** 自定义排序：把拖动的图标插入到目标位置并及时保存 */
+    const dropOnIcon = (targetId: string) => {
+        if (!dragIconId || dragIconId === targetId) {
+            setDragIconId(null);
+            return;
+        }
+        const ids = icons.map((icon) => icon.id);
+        const from = ids.indexOf(dragIconId);
+        const to = ids.indexOf(targetId);
+        setDragIconId(null);
+        if (from < 0 || to < 0) {
+            return;
+        }
+        ids.splice(to, 0, ...ids.splice(from, 1));
+        useProjectStore.getState().setIconsOrder(ids);
+        void api.icons.reorderIcons(activeProjectId, ids).catch((err: unknown) => {
+            Toast.showError(err instanceof Error ? err.message : "排序保存失败");
+            void refreshCurrent();
+        });
     };
 
     const addSelectedToCart = () => {
@@ -366,6 +444,19 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                             onChange={(event) => setKeyword(event.target.value)}
                         />
                     </div>
+                    <DropdownMenu
+                        items={SORT_ITEMS}
+                        value={sortMode}
+                        onChange={changeSort}
+                        trigger={
+                            <button
+                                type="button"
+                                className={`ui-btn small button-tonal select-like project-toolbar__sort ${sortMode !== "default" ? "has-value" : ""}`}
+                            >
+                                {SORT_LABELS[sortMode]}
+                            </button>
+                        }
+                    />
                     <Select
                         key={`${project.id}:${tag}`}
                         items={[
@@ -396,12 +487,40 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 ) : filtered.length === 0 ? (
                     <EmptyState text="没有匹配当前筛选条件的图标" icon="search" />
                 ) : (
-                    <ul className="icon-grid">
+                    <ul className={`icon-grid ${sortMode === "custom" ? "is-sortable" : ""}`}>
                         {filtered.map((icon) => (
-                            <li key={icon.id}>
+                            <li
+                                key={icon.id}
+                                className={dragIconId === icon.id ? "dragging" : ""}
+                                draggable={canSort}
+                                onDragStart={(event) => {
+                                    if (!canSort) {
+                                        return;
+                                    }
+                                    setDragIconId(icon.id);
+                                    event.dataTransfer.effectAllowed = "move";
+                                    event.dataTransfer.setData("text/plain", icon.id);
+                                }}
+                                onDragOver={(event) => {
+                                    if (!canSort) {
+                                        return;
+                                    }
+                                    event.preventDefault();
+                                    event.dataTransfer.dropEffect = "move";
+                                }}
+                                onDrop={(event) => {
+                                    if (!canSort) {
+                                        return;
+                                    }
+                                    event.preventDefault();
+                                    dropOnIcon(icon.id);
+                                }}
+                                onDragEnd={() => setDragIconId(null)}
+                            >
                                 <IconCard
                                     icon={icon}
                                     code={codeFor(icon)}
+                                    draggable={!canSort}
                                     selected={selected.includes(icon.id)}
                                     selectable={access.canEdit}
                                     canEdit={access.canEdit}

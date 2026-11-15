@@ -114,6 +114,17 @@
             flex: none;
         }
     }
+
+    // 排序下拉：与标签筛选同款 tonal select 外观
+    .project-toolbar__sort {
+        height: 1.5rem;
+        padding: 0 0.5em;
+        font-size: var(--font-small);
+
+        &.has-value {
+            color: var(--color-accent);
+        }
+    }
 }
 
 .batch-actions {
@@ -138,6 +149,15 @@
     > li {
         aspect-ratio: 1;
         min-width: 0;
+    }
+
+    // 自定义排序：拖拽重排时的视觉反馈
+    &.is-sortable > li {
+        cursor: grab;
+    }
+
+    > li.dragging {
+        opacity: 0.45;
     }
 }
 
