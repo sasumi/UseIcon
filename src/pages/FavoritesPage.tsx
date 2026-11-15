@@ -3,6 +3,7 @@ import { DIALOG_SIZE_SMALL, Dialog, Toast } from "minreact-ui";
 import type { FavoriteIcon } from "@/types";
 import { navigate } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
+import { openLoginDialog } from "@/store/loginDialogStore";
 import { cartItemFromFavorite, useCartStore } from "@/store/cartStore";
 import { collectFavoriteTags, useLibraryStore } from "@/store/libraryStore";
 import { copyText } from "@/utils/download";
@@ -73,7 +74,7 @@ export const FavoritesPage = () => {
         return (
             <div className="content-panel padded">
                 <EmptyState text="登录后即可看到你的收藏" icon="star">
-                    <button className="ui-btn primary" type="button" onClick={() => navigate("/login")}>
+                    <button className="ui-btn primary" type="button" onClick={() => openLoginDialog()}>
                         去登录
                     </button>
                 </EmptyState>

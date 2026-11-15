@@ -4,7 +4,9 @@ import { useState, useEffect, type ReactNode } from "react";
 import { navigate, type Route } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
 import { useLibraryStore } from "@/store/libraryStore";
+import { useLoginDialogStore } from "@/store/loginDialogStore";
 import { APP_VERSION } from "@/updates";
+import { LoginDialog } from "@/components/account/LoginDialog";
 import { UserProfileDialog } from "@/components/account/UserProfileDialog";
 import { AppIcon } from "@/components/common/AppIcon";
 import { UserAvatar } from "@/components/common/UserAvatar";
@@ -22,6 +24,7 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const favorites = useLibraryStore((state) => state.favorites);
+    const setLoginOpen = useLoginDialogStore((state) => state.setOpen);
     const [profileOpen, setProfileOpen] = useState(false);
     const [optionsOpen, setOptionsOpen] = useState(false);
 
@@ -50,13 +53,17 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
                 setProfileOpen(true);
                 break;
             case "logout":
-                void logout().then(() => navigate("/login"));
+                void logout().then(() => {
+                    if (route.name === "favorites") {
+                        setLoginOpen(true);
+                    }
+                });
                 break;
             case "options":
                 setOptionsOpen(true);
                 break;
             case "login":
-                navigate("/login");
+                setLoginOpen(true);
                 break;
             default:
                 break;
@@ -110,6 +117,7 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
             <CartDrawer />
             <UserProfileDialog open={profileOpen} setOpen={setProfileOpen} />
             <OptionsDialog open={optionsOpen} setOpen={setOptionsOpen} />
+            <LoginDialog />
         </div>
     );
 };

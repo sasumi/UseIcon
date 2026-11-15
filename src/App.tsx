@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ExtBridgePage } from "@/pages/ExtBridgePage";
 import { FavoritesPage } from "@/pages/FavoritesPage";
@@ -9,6 +9,7 @@ import { ProjectPage } from "@/pages/ProjectPage";
 import { UpdatesPage } from "@/pages/UpdatesPage";
 import { navigate, useRoute } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
+import { openLoginDialog } from "@/store/loginDialogStore";
 
 /** 应用入口与路由分发 */
 const App = () => {
@@ -16,15 +17,23 @@ const App = () => {
     const ready = useAuthStore((state) => state.ready);
     const user = useAuthStore((state) => state.user);
     const restore = useAuthStore((state) => state.restore);
+    const authPrompted = useRef(false);
 
     useEffect(() => {
         void restore();
     }, [restore]);
 
+    // 需要登录的页面在游客访问时弹出登录对话框，不再整页跳转
     const needAuth = !user && route.name === "favorites";
     useEffect(() => {
-        if (ready && needAuth) {
-            navigate("/login", { replace: true });
+        if (!ready) {
+            return;
+        }
+        if (needAuth && !authPrompted.current) {
+            authPrompted.current = true;
+            openLoginDialog();
+        } else if (!needAuth) {
+            authPrompted.current = false;
         }
     }, [ready, needAuth]);
 

@@ -1,69 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { Toast } from "minreact-ui";
-import { PUBLIC_API_HOST } from "@/api/http";
+import { useEffect } from "react";
 import { navigate } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
 import { AppIcon } from "@/components/common/AppIcon";
+import { LoginFrame } from "@/components/account/LoginFrame";
 
-/** 统一登录页（api.tthaoke.com），登录成功通过 postMessage 回传登录态 */
-const LOGIN_PAGE_URL = `${PUBLIC_API_HOST}login.php`;
-const LOGIN_PAGE_ORIGIN = new URL(LOGIN_PAGE_URL).origin;
-
-interface LoginPageMessage {
-    type?: "resize" | "register-success" | "login-success"; // 登录页消息类型
-    height?: number; // resize：内容高度
-    token?: string; // login-success：令牌
-    user?: unknown; // login-success：用户信息
-    email?: string; // register-success：待验证邮箱
-}
-
-/** 登录 / 注册页：内嵌 api.tthaoke.com 统一登录页 */
+/** 登录 / 注册页：内嵌统一登录页（应用内一般走登录对话框，此页保留给直接访问 /login） */
 export const LoginPage = () => {
     const user = useAuthStore((state) => state.user);
-    const applyLogin = useAuthStore((state) => state.applyLogin);
-    const [height, setHeight] = useState(520);
-    const [hint, setHint] = useState("");
 
     useEffect(() => {
         if (user) {
             navigate("/projects", { replace: true });
         }
     }, [user]);
-
-    useEffect(() => {
-        const handleMessage = (event: MessageEvent) => {
-            if (event.origin !== LOGIN_PAGE_ORIGIN) {
-                return;
-            }
-            const data = event.data as LoginPageMessage | null;
-            if (!data) {
-                return;
-            }
-            if (data.type === "resize" && data.height && data.height > 0) {
-                setHeight(Math.min(Math.max(Math.ceil(data.height), 380), 760));
-                return;
-            }
-            if (data.type === "register-success") {
-                setHint(`验证邮件已发送至 ${data.email || "你的邮箱"}，请点击邮件中的链接完成注册。`);
-                return;
-            }
-            if (data.type === "login-success") {
-                applyLogin({ token: data.token, user: data.user });
-                Toast.showSuccess("登录成功");
-                navigate("/projects");
-            }
-        };
-        window.addEventListener("message", handleMessage);
-        return () => window.removeEventListener("message", handleMessage);
-    }, [applyLogin]);
-
-    const loginUrl = useMemo(() => {
-        const url = new URL(LOGIN_PAGE_URL);
-        url.searchParams.set("origin", window.location.origin);
-        url.searchParams.set("from", "useicon");
-        url.searchParams.set("return", window.location.href);
-        return url.toString();
-    }, []);
 
     return (
         <div className="login-page">
@@ -102,14 +51,7 @@ export const LoginPage = () => {
             </div>
 
             <div className="login-panel">
-                <iframe
-                    title="UseIcon 登录"
-                    className="login-iframe"
-                    src={loginUrl}
-                    style={{ height }}
-                    allow="clipboard-write"
-                />
-                {hint && <p className="ui-alert">{hint}</p>}
+                <LoginFrame onSuccess={() => navigate("/projects")} />
                 <p className="ui-note">
                     登录页支持账号密码、微信扫码；注册与找回密码也在登录页内完成。登录态仅保存在本设备（Bearer 令牌）。
                 </p>

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { DIALOG_SIZE_NORMAL, Dialog, Toast } from "minreact-ui";
 import { LIBRARY_CATEGORIES } from "@/data/library";
-import { navigate } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
+import { openLoginDialog } from "@/store/loginDialogStore";
 import { cartItemFromLibrary, useCartStore } from "@/store/cartStore";
 import { useLibraryStore } from "@/store/libraryStore";
 import type { LibraryIcon } from "@/types";
@@ -65,7 +65,7 @@ export const LibraryPage = () => {
     const toggleFavorite = (icon: LibraryIcon) => {
         if (!user) {
             Toast.showInfo("登录后即可收藏图标");
-            navigate("/login");
+            openLoginDialog();
             return;
         }
         const existed = favoriteOf(icon);

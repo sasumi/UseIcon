@@ -3,6 +3,7 @@ import { Dialog, Select, Toast } from "minreact-ui";
 import { api } from "@/api";
 import { extModePath, navigate, projectPath } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
+import { openLoginDialog } from "@/store/loginDialogStore";
 import { cartItemFromProjectIcon, useCartStore } from "@/store/cartStore";
 import { useLibraryStore } from "@/store/libraryStore";
 import { useProjectStore } from "@/store/projectStore";
@@ -115,7 +116,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     const toggleIconFavorite = (icon: IconItem) => {
         if (!user) {
             Toast.showInfo("登录后即可收藏图标");
-            navigate("/login");
+            openLoginDialog();
             return;
         }
         const existed = favoriteOf(icon);
@@ -206,6 +207,14 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
         </SidePanel>
     );
 
+    const createDialog = (
+        <ProjectFormDialog
+            open={createOpen}
+            setOpen={setCreateOpen}
+            onCreated={(created) => navigate(projectPath(created.id))}
+        />
+    );
+
     if (!projectId) {
         return (
             <>
@@ -220,7 +229,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                                     新建项目
                                 </button>
                             ) : (
-                                <button className="ui-btn primary" type="button" onClick={() => navigate("/login")}>
+                                <button className="ui-btn primary" type="button" onClick={() => openLoginDialog()}>
                                     去登录
                                 </button>
                             )}
@@ -247,6 +256,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                         </button>
                     </EmptyState>
                 </div>
+                {createDialog}
             </>
         );
     }
@@ -258,6 +268,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 <div className="content-panel padded">
                     <div className="ui-loading">正在加载项目...</div>
                 </div>
+                {createDialog}
             </>
         );
     }
@@ -269,6 +280,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 <div className="content-panel padded">
                     <EmptyState text="你没有访问该项目的权限（内部项目仅成员可见）" icon="lock" />
                 </div>
+                {createDialog}
             </>
         );
     }
@@ -472,6 +484,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 onUpdated={(updated) => updateIcons([updated])}
                 onDeleted={(iconId) => removeIcons([iconId])}
             />
+            {createDialog}
         </>
     );
 };
@@ -564,7 +577,7 @@ const ProjectList = ({ activeId, onCreate }: { activeId: string; onCreate: () =>
                     className="ui-btn small primary"
                     type="button"
                     title={user ? "新建项目" : "登录后新建项目"}
-                    onClick={() => (user ? onCreate() : navigate("/login"))}
+                    onClick={() => (user ? onCreate() : openLoginDialog())}
                 >
                     <AppIcon name="plus" />
                     新建
