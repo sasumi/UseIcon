@@ -4,7 +4,7 @@ VSCode 风格的图标管理平台：公共 SVG 图标库、可协作的项目�
 
 - **前端**：React 19 + Vite 8 + TypeScript 6 + SCSS + zustand + [minreact-ui](../minreact-ui)（本地 link）
 - **用户体系**：直连 `api.tthaoke.com`（与同通好课 / 易纸 / 路书共用账号）
-- **业务数据**：项目、项目成员、图标与收藏由 `uiapi.tthaoke.com`（[uiapi](../uiapi)）提供，服务端存储、多人共享
+- **业务数据**：项目、项目成员、项目图标、个人收藏与公共图标库都由 `uiapi.tthaoke.com`（[uiapi](../uiapi)）提供，服务端存储、多人共享
 
 ## 快速开始
 
@@ -42,7 +42,7 @@ pnpm preview    # 预览生产构建，同样可通过局域网访问
 
 | 模块 | 说明 |
 | --- | --- |
-| 公共图标库 | 内置 80+ 线性图标，按分类浏览、关键词搜索、收藏（打标签）与加入项目 |
+| 公共图标库 | 80+ 线性图标，数据存在后台（`ui_icon` 中 `project_id=library`）；按分类浏览、关键词搜索、收藏（打标签）与加入项目；公共库管理员可上传、编辑、批量优化 / 重命名与删除 |
 | 我的收藏 | 跨公共库 / 项目的图标快照，支持打标签、搜索、复制、下载、加入项目、加入采集车 |
 | 采集车 | 类似购物车：先把看中的图标收进来，再一次性批量加入某个项目 |
 | 项目 | 工作区：侧栏常驻项目列表（筛选 / 滚动加载 / 切换 / 新建），主区为当前项目图标网格，支持搜索与标签筛选（进入即打开第一个项目） |
@@ -93,9 +93,10 @@ src/
 │   ├── http.ts        # 统一请求 / 令牌 / 错误 / 两套接口主机
 │   ├── auth.ts        # 登录态、头像、昵称
 │   ├── projects.ts    # 项目 / 成员
-│   ├── icons.ts       # 项目图标 / 批量操作 / 公共库导入
-│   └── favorites.ts   # 个人收藏 + 公共库目录
-├── data/library.ts    # 内置公共图标库
+│   ├── icons.ts       # 项目图标 / 批量操作 / 从公共库导入
+│   ├── library.ts     # 公共图标库（列表 / 维护者上传与批量操作）
+│   └── favorites.ts   # 个人收藏
+├── data/library.ts    # 内置界面图标（AppIcon 使用）+ 公共库分类常量
 ├── store/             # zustand：auth / library / project / cart / theme / display / 代码模板
 ├── hooks/             # 可复用 hooks（侧栏拖动调宽等）
 ├── utils/             # SVG 解析优化、iconfont 解析、图片转 SVG、导出、权限
@@ -107,10 +108,12 @@ extensions/BrowserExt/ # Chrome MV3 浏览器扩展
 
 ## 接口层
 
-`src/api/index.ts` 统一导出 `api`，业务组件只依赖 `api.projects / api.icons / api.favorites` 的函数签名：
+`src/api/index.ts` 统一导出 `api`，业务组件只依赖 `api.projects / api.icons / api.library / api.favorites` 的函数签名：
 
 - `api.auth.*` → `api.tthaoke.com`（登录 / 账户 / 附件）
-- `api.projects / api.icons / api.favorites` → `uiapi.tthaoke.com/v1/*`（项目 / 图标 / 收藏）
+- `api.projects / api.icons / api.library / api.favorites` → `uiapi.tthaoke.com/v1/*`（项目 / 项目图标 / 公共库 / 收藏）
+
+公共库能否维护由后台返回的 `canEdit` 决定（公共库成员记录在 uiapi 数据库 `ui_project_member` 中 `project_id=library` 的行，用 `php script/library-admin.php` 维护），前端只负责按它显示入口。
 
 接口地址可用 `.env` 覆盖：`VITE_PUBLIC_API_HOST`（账号）、`VITE_ICON_API_HOST`（业务，默认 `https://uiapi.tthaoke.com/`）。
 后台服务与接口清单见 [uiapi/README.md](../uiapi/README.md)。

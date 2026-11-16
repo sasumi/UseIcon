@@ -1,5 +1,4 @@
-import { LIBRARY_ICONS } from "@/data/library";
-import type { FavoriteIcon, LibraryIcon } from "@/types";
+import type { FavoriteIcon } from "@/types";
 import { normalizeSvg, sanitizeIconName } from "@/utils/svg";
 import { iconGetJSON, iconPostJSON } from "./http";
 
@@ -55,6 +54,3 @@ export const updateFavorite = (
 /** 删除收藏 */
 export const removeFavorite = (favoriteId: string): Promise<void> =>
     iconPostJSON("favorite/remove", { id: favoriteId }).then(() => undefined);
-
-/** 公共库图标（静态数据，随前端一起发布） */
-export const listLibraryIcons = (): Promise<LibraryIcon[]> => Promise.resolve(LIBRARY_ICONS);

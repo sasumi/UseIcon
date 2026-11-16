@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DropdownMenu, MenuItemDivider, Select, Toast } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import { CODE_TEMPLATE_PRESETS, DEFAULT_CODE_TEMPLATE, EXTMODE_CODE_HEIGHT_KEY, PROJECT_SORT_STORAGE_PREFIX } from "@/config";
@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useCodeTypeStore } from "@/store/codeTypeStore";
 import type { CodeType } from "@/store/codeTypeStore";
 import { useDisplayStore } from "@/store/displayStore";
+import { openLoginDialog } from "@/store/loginDialogStore";
 import { useProjectStore } from "@/store/projectStore";
 import type { IconItem, Project } from "@/types";
 import { copyText } from "@/utils/download";
@@ -18,6 +19,7 @@ import { AppIcon } from "@/components/common/AppIcon";
 import { EmptyState } from "@/components/common/EmptyState";
 import { SvgPreview } from "@/components/common/SvgPreview";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
+import { LoginDialog } from "@/components/account/LoginDialog";
 import { CodeTypeDialog } from "@/components/extmode/CodeTypeDialog";
 import { ProjectPicker } from "@/components/project/ProjectPicker";
 
@@ -63,6 +65,7 @@ const readSortMode = (projectId: string): SortMode => {
  */
 export const ExtModePage = ({ projectId }: { projectId: string }) => {
     const user = useAuthStore((state) => state.user);
+    const ready = useAuthStore((state) => state.ready);
     const project = useProjectStore((state) => state.current);
     const projects = useProjectStore((state) => state.projects);
     const icons = useProjectStore((state) => state.icons);
@@ -82,15 +85,30 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
     const removeType = useCodeTypeStore((state) => state.removeType);
     const display = useDisplayStore((state) => state.display);
     const { height: codeHeight, panelRef: codePanelRef, resizerProps: codeResizerProps } = usePanelHeight(CODE_PANEL_HEIGHT);
+    const loginPrompted = useRef(false);
+
+    // 拓展模式要求登录：登录态恢复完成后仍未登录时，主动弹出一次登录框
+    useEffect(() => {
+        if (ready && !user && !loginPrompted.current) {
+            loginPrompted.current = true;
+            openLoginDialog();
+        }
+    }, [ready, user]);
 
     useEffect(() => {
+        if (!user) {
+            return;
+        }
         void loadProject(projectId);
-    }, [projectId, loadProject]);
+    }, [projectId, user, loadProject]);
 
     // 下拉切换项目需要完整项目列表
     useEffect(() => {
+        if (!user) {
+            return;
+        }
         void loadProjects();
-    }, [loadProjects]);
+    }, [user, loadProjects]);
 
     // 切换项目时重置筛选与代码，并恢复该项目的排序偏好
     useEffect(() => {
@@ -248,6 +266,35 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
     const insert = (text: string) => {
         setCode((prev) => `${prev}${text}`);
     };
+
+    if (!ready) {
+        return (
+            <div className="extmode-app">
+                <div className="ui-loading">正在恢复登录态...</div>
+            </div>
+        );
+    }
+
+    if (!user) {
+        return (
+            <div className="extmode-app">
+                <header className="extmode-header">
+                    <span className="extmode-logo">UI</span>
+                    <span className="extmode-title ellipsis">拓展模式</span>
+                    <div className="spacer" />
+                    <ThemeToggle />
+                </header>
+                <div className="extmode-login">
+                    <EmptyState text="拓展模式需要登录后使用：登录即可读取你的项目与图标" icon="lock">
+                        <button className="ui-btn primary" type="button" onClick={() => openLoginDialog()}>
+                            去登录
+                        </button>
+                    </EmptyState>
+                </div>
+                <LoginDialog />
+            </div>
+        );
+    }
 
     if (error) {
         return (

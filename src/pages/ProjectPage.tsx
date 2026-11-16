@@ -67,7 +67,6 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     const user = useAuthStore((state) => state.user);
     const projects = useProjectStore((state) => state.projects);
     const listLoading = useProjectStore((state) => state.listLoading);
-    const loadProjectPage = useProjectStore((state) => state.loadProjectPage);
     const project = useProjectStore((state) => state.current);
     const icons = useProjectStore((state) => state.icons);
     const loading = useProjectStore((state) => state.detailLoading);
@@ -98,12 +97,6 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     const cartItems = useCartStore((state) => state.items);
     const toggleCart = useCartStore((state) => state.toggle);
     const setCartOpen = useCartStore((state) => state.setOpen);
-
-    useEffect(() => {
-        if (!projectId) {
-            void loadProjectPage();
-        }
-    }, [projectId, loadProjectPage]);
 
     // 未指定项目时默认打开第一个项目
     useEffect(() => {
@@ -265,7 +258,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
         }
         const ids = selected;
         void Dialog.confirm({
-            title: "删除图标",
+            title: "删除",
             message: `确定删除选中的 ${ids.length} 个图标吗？此操作不可恢复。`,
             confirmText: "删除",
         })
@@ -591,7 +584,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                                     onDownload={() => downloadSvg(icon, iconSize)}
                                     onDelete={() => {
                                         void Dialog.confirm({
-                                            title: "删除图标",
+                                            title: "删除",
                                             message: `确定删除「${icon.className}」吗？此操作不可恢复。`,
                                             confirmText: "删除",
                                         })
@@ -685,6 +678,7 @@ const ProjectList = ({ activeId, onCreate }: { activeId: string; onCreate: () =>
     const projectHasMore = useProjectStore((state) => state.projectHasMore);
     const projectLoadingMore = useProjectStore((state) => state.projectLoadingMore);
     const listLoading = useProjectStore((state) => state.listLoading);
+    const listLoaded = useProjectStore((state) => state.listLoaded);
     const loadProjects = useProjectStore((state) => state.loadProjects);
     const loadProjectPage = useProjectStore((state) => state.loadProjectPage);
     const loadMoreProjects = useProjectStore((state) => state.loadMoreProjects);
@@ -692,12 +686,12 @@ const ProjectList = ({ activeId, onCreate }: { activeId: string; onCreate: () =>
     const [counts, setCounts] = useState<Record<string, number>>({});
     const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-    // 直接打开项目详情时列表可能尚未加载（例如从 ExtMode 返回）
+    // 列表只加载一次：直接打开项目详情（如从 ExtMode 返回）时补一次，空列表也不会反复请求
     useEffect(() => {
-        if (projects.length === 0 && !listLoading) {
+        if (!listLoaded && !listLoading) {
             void loadProjectPage();
         }
-    }, [projects.length, listLoading, loadProjectPage]);
+    }, [listLoaded, listLoading, loadProjectPage]);
 
     // 搜索需要覆盖未加载的项目时，直接取全量
     useEffect(() => {

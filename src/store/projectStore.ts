@@ -1,5 +1,5 @@
 import { api } from "@/api";
-import type { IconItem, Project } from "@/types";
+import type { IconItem, IconPatch, Project } from "@/types";
 import { create } from "zustand";
 
 /** 侧栏项目列表每页条数 */
@@ -11,6 +11,7 @@ interface ProjectState {
     projectHasMore: boolean; // 是否还有未加载的项目
     projectLoadingMore: boolean; // 是否正在加载下一页
     listLoading: boolean; // 首页加载中
+    listLoaded: boolean; // 项目列表是否已加载过（空列表时也不必重复请求）
     current: Project | null; // 当前打开的项目
     icons: IconItem[]; // 当前项目的图标
     detailLoading: boolean; // 项目详情加载中
@@ -21,9 +22,9 @@ interface ProjectState {
     loadProject: (projectId: string) => Promise<Project | null>; // 加载项目详情与图标
     refreshCurrent: () => Promise<void>; // 重新拉取当前项目
     setCurrent: (project: Project | null) => void; // 直接替换当前项目（更新设置后）
-    updateIcons: (icons: IconItem[]) => void; // 局部更新图标列表
+    updateIcons: (icons: IconPatch[]) => void; // 局部更新图标列表
     setIconsOrder: (orderedIds: string[]) => void; // 按给定顺序重排本地图标
-    removeIcons: (iconIds: string[]) => void; // 局部删除图标
+    removeIcons: (iconIds: string[]) => void; // 局部删除
     reset: () => void; // 清空状态
 }
 
@@ -33,6 +34,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     projectHasMore: false,
     projectLoadingMore: false,
     listLoading: false,
+    listLoaded: false,
     current: null,
     icons: [],
     detailLoading: false,
@@ -41,7 +43,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         set({ listLoading: true });
         try {
             const projects = await api.projects.listProjects();
-            set({ projects, projectTotal: projects.length, projectHasMore: false });
+            set({ projects, projectTotal: projects.length, projectHasMore: false, listLoaded: true });
             return projects;
         } finally {
             set({ listLoading: false });
@@ -51,7 +53,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         set({ listLoading: true });
         try {
             const page = await api.projects.listProjectsPaged({ offset: 0, limit: PROJECT_PAGE_SIZE });
-            set({ projects: page.items, projectTotal: page.total, projectHasMore: page.hasMore });
+            set({ projects: page.items, projectTotal: page.total, projectHasMore: page.hasMore, listLoaded: true });
         } finally {
             set({ listLoading: false });
         }
@@ -100,7 +102,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     setCurrent: (project) => set({ current: project }),
     updateIcons: (updated) => {
         const map = new Map(updated.map((icon) => [icon.id, icon]));
-        set({ icons: get().icons.map((icon) => map.get(icon.id) || icon) });
+        set({ icons: get().icons.map((icon) => (map.has(icon.id) ? { ...icon, ...map.get(icon.id) } : icon)) });
     },
     setIconsOrder: (orderedIds) => {
         const map = new Map(get().icons.map((icon) => [icon.id, icon]));
@@ -122,6 +124,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             projectTotal: 0,
             projectHasMore: false,
             projectLoadingMore: false,
+            listLoaded: false,
             current: null,
             icons: [],
             detailError: null,

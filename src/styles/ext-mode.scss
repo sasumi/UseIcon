@@ -51,6 +51,16 @@
     max-width: 8rem;
 }
 
+// 未登录时的登录引导区
+.extmode-login {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+    text-align: center;
+}
+
 // 项目名称后的切换项目入口（仅点击箭头触发下拉）
 .extmode-project-switch {
     flex: none;

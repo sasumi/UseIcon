@@ -72,12 +72,18 @@ export interface IconItem {
 }
 
 /** 公共库图标 */
+/** 图标局部更新（批量优化 / 重命名等场景返回的最小字段集合） */
+export type IconPatch = Pick<IconItem, "id" | "className" | "svg" | "tags"> & Partial<IconItem>;
+
+/** 公共库图标（来自 uiapi 的 ui_icon 表，project_id=library） */
 export interface LibraryIcon {
     id: string; // 图标 ID
     className: string; // 图标类名
     svg: string; // SVG 源码
     category: string; // 分类
     tags: string[]; // 搜索标签
+    order?: number; // 排序号（升序）
+    updatedAt?: number; // 更新时间戳
 }
 
 /** 当前用户的权限上下文 */
@@ -110,6 +116,7 @@ export interface IconInput {
     svg: string; // SVG 源码
     tags?: string[]; // 标签
     libraryId?: string; // 公共库引用 ID
+    category?: string; // 分类（仅公共库使用）
 }
 
 /** 上传/导入时解析出的候选图标 */

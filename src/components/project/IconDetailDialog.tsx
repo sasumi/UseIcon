@@ -121,7 +121,7 @@ export const IconDetailDialog = ({
 
     const remove = () => {
         void Dialog.confirm({
-            title: "删除图标",
+            title: "删除",
             message: `确定删除「${icon.className}」吗？此操作不可恢复。`,
             confirmText: "删除",
             onPreConfirm: () => {

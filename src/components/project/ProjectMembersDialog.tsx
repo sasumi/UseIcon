@@ -129,7 +129,7 @@ export const ProjectMembersDialog = ({
                             </button>
                         </div>
                         <p className="ui-note">
-                            管理员可管理项目与成员；协作人员可上传 / 编辑 / 删除图标；普通用户仅查看与复制代码。
+                            管理员可管理项目与成员；协作人员可上传 / 编辑 / 删除；普通用户仅查看与复制代码。
                         </p>
                         <ul className="settings-member-list">
                             {project.members.map((member) => (

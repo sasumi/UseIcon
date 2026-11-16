@@ -4,10 +4,12 @@ import { create } from "zustand";
 
 interface LibraryState {
     icons: LibraryIcon[]; // 公共库图标
+    canEdit: boolean; // 当前用户是否可维护公共库
     favorites: FavoriteIcon[]; // 个人收藏
     loading: boolean; // 是否加载中
     loaded: boolean; // 是否已加载
     fetchAll: () => Promise<void>; // 加载公共库与收藏
+    refreshIcons: () => Promise<void>; // 仅刷新公共库
     refreshFavorites: () => Promise<void>; // 仅刷新收藏
     addFavorite: (input: Parameters<typeof api.favorites.addFavorite>[0]) => Promise<FavoriteIcon>; // 添加收藏
     updateFavorite: (favoriteId: string, patch: Partial<Pick<FavoriteIcon, "className" | "tags">>) => Promise<void>; // 更新收藏
@@ -20,6 +22,7 @@ let fetchPromise: Promise<void> | null = null;
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
     icons: [],
+    canEdit: false,
     favorites: [],
     loading: false,
     loaded: false,
@@ -28,8 +31,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             return fetchPromise;
         }
         set({ loading: true });
-        fetchPromise = Promise.all([api.favorites.listLibraryIcons(), api.favorites.listFavorites()])
-            .then(([icons, favorites]) => set({ icons, favorites, loaded: true }))
+        fetchPromise = Promise.all([api.library.listLibraryIcons(), api.favorites.listFavorites()])
+            .then(([library, favorites]) => set({ icons: library.icons, canEdit: library.canEdit, favorites, loaded: true }))
             .catch((error: unknown) => {
                 console.warn("加载公共库失败", error);
             })
@@ -38,6 +41,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
                 set({ loading: false });
             });
         return fetchPromise;
+    },
+    refreshIcons: async () => {
+        const library = await api.library.listLibraryIcons();
+        set({ icons: library.icons, canEdit: library.canEdit, loaded: true });
     },
     refreshFavorites: async () => {
         const favorites = await api.favorites.listFavorites();

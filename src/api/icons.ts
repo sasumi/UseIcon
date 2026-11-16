@@ -1,5 +1,4 @@
-import { LIBRARY_ICON_MAP } from "@/data/library";
-import type { IconInput, IconItem, IconOptimizeOptions, LibraryIcon } from "@/types";
+import type { IconInput, IconItem, IconOptimizeOptions } from "@/types";
 import { normalizeSvg, optimizeSvg, sanitizeIconName } from "@/utils/svg";
 import { ApiError, iconGetJSON, iconPostJSON } from "./http";
 
@@ -41,21 +40,14 @@ export const createIcons = async (projectId: string, inputs: IconInput[]): Promi
     return created;
 };
 
-/** 从公共库添加图标 */
+/** 从公共库添加图标（由后台按公共库数据复制快照） */
 export const addIconsFromLibrary = (projectId: string, libraryIds: string[]): Promise<IconItem[]> => {
-    const inputs: IconInput[] = libraryIds.map((libraryId) => {
-        const libraryIcon: LibraryIcon | undefined = LIBRARY_ICON_MAP[libraryId];
-        if (!libraryIcon) {
-            throw new ApiError("公共库图标不存在", "not-found");
-        }
-        return {
-            className: libraryIcon.className,
-            svg: libraryIcon.svg,
-            tags: libraryIcon.tags.slice(0, 3),
-            libraryId: libraryIcon.id,
-        };
-    });
-    return createIcons(projectId, inputs);
+    if (libraryIds.length === 0) {
+        return Promise.reject(new ApiError("请选择公共库图标"));
+    }
+    return iconPostJSON("icon/addFromLibrary", { project_id: projectId, library_ids: libraryIds }).then(
+        (data) => (data?.list ?? []) as IconItem[],
+    );
 };
 
 /** 更新图标 */
@@ -77,7 +69,7 @@ export const updateIcon = (iconId: string, patch: Partial<Pick<IconItem, "classN
     return iconPostJSON("icon/saveBatch", { items: [item] }).then((data) => (data?.list ?? [])[0] as IconItem);
 };
 
-/** 批量删除图标 */
+/** 批量删除 */
 export const deleteIcons = (iconIds: string[]): Promise<void> => {
     if (iconIds.length === 0) {
         return Promise.reject(new ApiError("请先选择图标"));

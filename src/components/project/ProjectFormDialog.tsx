@@ -3,6 +3,7 @@ import { DIALOG_SIZE_NORMAL, Dialog, Select, Toast } from "minreact-ui";
 import { api } from "@/api";
 import { DEFAULT_ICON_SIZE } from "@/config";
 import { useDialogForm } from "@/hooks/useDialogForm";
+import { useProjectStore } from "@/store/projectStore";
 import type { Project, ProjectVisibility } from "@/types";
 import { AppIcon } from "@/components/common/AppIcon";
 
@@ -42,6 +43,8 @@ export const ProjectFormDialog = ({
             const project = await api.projects.createProject({ name, description, visibility, allowGuest, iconSize });
             Toast.showSuccess("项目已创建");
             setOpen(false);
+            // 侧栏列表已加载过，创建后就地刷新，避免新项目要刷新页面才出现
+            void useProjectStore.getState().loadProjectPage();
             onCreated(project);
         } catch (error) {
             Toast.showError(error instanceof Error ? error.message : "创建失败");

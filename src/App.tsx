@@ -9,7 +9,9 @@ import { ProjectPage } from "@/pages/ProjectPage";
 import { UpdatesPage } from "@/pages/UpdatesPage";
 import { navigate, useRoute } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
+import { useLibraryStore } from "@/store/libraryStore";
 import { openLoginDialog } from "@/store/loginDialogStore";
+import { useProjectStore } from "@/store/projectStore";
 
 /** 应用入口与路由分发 */
 const App = () => {
@@ -18,10 +20,17 @@ const App = () => {
     const user = useAuthStore((state) => state.user);
     const restore = useAuthStore((state) => state.restore);
     const authPrompted = useRef(false);
+    const accountId = user?.id ?? "";
 
     useEffect(() => {
         void restore();
     }, [restore]);
+
+    // 账号切换（含退出登录）后清空项目缓存，并重新拉取公共库（维护权限随账号变化）
+    useEffect(() => {
+        useProjectStore.getState().reset();
+        void useLibraryStore.getState().fetchAll();
+    }, [accountId]);
 
     // 需要登录的页面在游客访问时弹出登录对话框，不再整页跳转
     const needAuth = !user && route.name === "favorites";

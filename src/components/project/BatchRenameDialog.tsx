@@ -2,19 +2,21 @@ import { useEffect, useState } from "react";
 import { DIALOG_SIZE_SMALL, Dialog, Toast } from "minreact-ui";
 import { api } from "@/api";
 import { useDialogForm } from "@/hooks/useDialogForm";
-import type { IconItem } from "@/types";
+import type { IconPatch } from "@/types";
 
-/** 批量重命名图标 */
+/** 批量重命名图标（项目图标与公共库图标共用） */
 export const BatchRenameDialog = ({
     open,
     setOpen,
     iconIds,
     onDone,
+    rename = api.icons.renameIcons,
 }: {
     open: boolean; // 是否打开
     setOpen: (open: boolean) => void; // 显隐控制
     iconIds: string[]; // 待重命名图标
-    onDone: (icons: IconItem[]) => void; // 完成回调
+    onDone: (icons: IconPatch[]) => void; // 完成回调
+    rename?: (iconIds: string[], options: { prefix?: string; suffix?: string; find?: string; replace?: string }) => Promise<IconPatch[]>; // 重命名实现，默认走项目图标接口
 }) => {
     const [prefix, setPrefix] = useState("");
     const [suffix, setSuffix] = useState("");
@@ -38,7 +40,7 @@ export const BatchRenameDialog = ({
         }
         setSaving(true);
         try {
-            const icons = await api.icons.renameIcons(iconIds, { prefix, suffix, find, replace });
+            const icons = await rename(iconIds, { prefix, suffix, find, replace });
             Toast.showSuccess(`已重命名 ${icons.length} 个图标`);
             onDone(icons);
             setOpen(false);

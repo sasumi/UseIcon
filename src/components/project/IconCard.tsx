@@ -28,7 +28,7 @@ export const IconCard = ({
     canEdit = false,
     favorite = false,
     inCart = false,
-    deleteLabel = "删除图标",
+    deleteLabel = "删除",
     editLabel = "编辑",
     showOpenItem = true,
     onToggleSelect,
@@ -91,9 +91,9 @@ export const IconCard = ({
         menuItems.push({ value: "download-png", label: "下载为 PNG 图标", icon: <AppIcon name="image" /> });
     }
     if (onOpen && showOpenItem) {
-        menuItems.push({ value: "open", label: "查看详情", icon: <AppIcon name="eye" /> });
+        menuItems.push({ value: "open", label: "查看", icon: <AppIcon name="eye" /> });
     }
-    if (onDelete && (canEdit || deleteLabel !== "删除图标")) {
+    if (onDelete && (canEdit || deleteLabel !== "删除")) {
         if (menuItems.length > 0) {
             menuItems.push(MenuItemDivider);
         }

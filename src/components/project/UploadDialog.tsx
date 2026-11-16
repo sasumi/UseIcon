@@ -23,11 +23,13 @@ export const UploadDialog = ({
     open,
     setOpen,
     projectId,
+    target = "project",
     onImported,
 }: {
     open: boolean; // 是否打开
     setOpen: (open: boolean) => void; // 显隐控制
-    projectId: string; // 目标项目
+    projectId?: string; // 目标项目（target 为 project 时必填）
+    target?: "project" | "library"; // 导入目标：项目图标 / 公共图标库
     onImported: () => void; // 导入完成回调
 }) => {
     const [candidates, setCandidates] = useState<IconCandidate[]>([]);
@@ -162,15 +164,17 @@ export const UploadDialog = ({
         }
         setSaving(true);
         try {
-            await api.icons.createIcons(
-                projectId,
-                selected.map((item) => ({
-                    className: `${prefix}${item.className}`,
-                    svg: item.svg,
-                    tags: item.tags,
-                    libraryId: item.libraryId,
-                })),
-            );
+            const inputs = selected.map((item) => ({
+                className: `${prefix}${item.className}`,
+                svg: item.svg,
+                tags: item.tags,
+                libraryId: item.libraryId,
+            }));
+            if (target === "library") {
+                await api.library.createLibraryIcons(inputs);
+            } else {
+                await api.icons.createIcons(String(projectId), inputs);
+            }
             Toast.showSuccess(`已导入 ${selected.length} 个图标`);
             reset();
             setOpen(false);
@@ -184,7 +188,7 @@ export const UploadDialog = ({
 
     return (
         <Dialog open={open} setOpen={setOpen} width={DIALOG_SIZE_LARGE} clickMaskerToClose>
-            <Dialog.Title>上传 / 导入图标</Dialog.Title>
+            <Dialog.Title>{target === "library" ? "上传到公共图标库" : "上传 / 导入图标"}</Dialog.Title>
             <Dialog.Content>
                 <div className="dialog-body">
                     <FileDropZone

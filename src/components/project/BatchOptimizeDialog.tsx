@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { DIALOG_SIZE_NORMAL, Dialog, RangeInput, Toast } from "minreact-ui";
 import { api } from "@/api";
 import { useDialogForm } from "@/hooks/useDialogForm";
-import type { IconItem } from "@/types";
+import type { IconOptimizeOptions, IconPatch } from "@/types";
 import { AppIcon } from "@/components/common/AppIcon";
 
 const SIZE_MIN = 12;
@@ -48,19 +48,21 @@ const OptionRow = ({
     </div>
 );
 
-/** 批量优化图标 */
+/** 批量优化图标（项目图标与公共库图标共用） */
 export const BatchOptimizeDialog = ({
     open,
     setOpen,
     iconIds,
     defaultSize,
     onDone,
+    optimize = api.icons.optimizeIcons,
 }: {
     open: boolean; // 是否打开
     setOpen: (open: boolean) => void; // 显隐控制
     iconIds: string[]; // 待优化图标
-    defaultSize: number; // 项目默认尺寸
-    onDone: (icons: IconItem[]) => void; // 完成回调
+    defaultSize: number; // 默认尺寸
+    onDone: (icons: IconPatch[]) => void; // 完成回调
+    optimize?: (iconIds: string[], options: IconOptimizeOptions) => Promise<IconPatch[]>; // 优化实现，默认走项目图标接口
 }) => {
     const [sizeEnabled, setSizeEnabled] = useState(true);
     const [size, setSize] = useState(() => clamp(defaultSize, SIZE_MIN, SIZE_MAX));
@@ -91,7 +93,7 @@ export const BatchOptimizeDialog = ({
     const submit = async () => {
         setSaving(true);
         try {
-            const icons = await api.icons.optimizeIcons(iconIds, {
+            const icons = await optimize(iconIds, {
                 size: sizeEnabled ? size : null,
                 useCurrentColor,
                 strokeWidth: strokeEnabled ? strokeWidth : null,
