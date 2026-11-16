@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DIALOG_SIZE_SMALL, Dialog, DropdownMenu, Toast } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import type { FavoriteIcon, IconItem } from "@/types";
 import { DEFAULT_ICON_SIZE, FAVORITES_SORT_STORAGE_KEY } from "@/config";
 import { useClearOnBlankClick } from "@/hooks/useClearOnBlankClick";
 import { useDialogForm } from "@/hooks/useDialogForm";
+import { useDragSelect } from "@/hooks/useDragSelect";
 import { useTimedTip } from "@/hooks/useTimedTip";
 import { navigate } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
@@ -46,7 +47,7 @@ const readSortMode = (): FavoritesSortMode => {
     }
 };
 
-/** 我的收藏：跨项目 / 公共库的个人图标集合，可打标签、采集与批量操作 */
+/** 我的收藏：跨项目 / 公共库的个人图标集合，可打标签、采集、批量操作与拖动框选 */
 export const FavoritesPage = () => {
     const user = useAuthStore((state) => state.user);
     const favorites = useLibraryStore((state) => state.favorites);
@@ -61,6 +62,7 @@ export const FavoritesPage = () => {
     const [sortMode, setSortMode] = useState<FavoritesSortMode>(readSortMode);
     const [selected, setSelected] = useState<string[]>([]);
     const [editing, setEditing] = useState<FavoriteIcon | null>(null);
+    const gridRef = useRef<HTMLUListElement | null>(null);
 
     useClearOnBlankClick(() => setSelected((prev) => (prev.length === 0 ? prev : [])));
 
@@ -114,6 +116,12 @@ export const FavoritesPage = () => {
             sortMode === "name-asc" ? a.className.localeCompare(b.className, "zh") : b.className.localeCompare(a.className, "zh"),
         );
     }, [favorites, keyword, category, sortMode]);
+
+    const dragBox = useDragSelect({
+        containerRef: gridRef,
+        enabled: filtered.length > 0,
+        onSelect: (ids, additive) => setSelected((prev) => (additive ? Array.from(new Set([...prev, ...ids])) : ids)),
+    });
 
     const changeSortMode = (next: FavoritesSortMode) => {
         setSortMode(next);
@@ -291,9 +299,9 @@ export const FavoritesPage = () => {
                 ) : filtered.length === 0 ? (
                     <EmptyState text="没有匹配当前筛选的收藏" />
                 ) : (
-                    <ul className="icon-grid">
+                    <ul ref={gridRef} className="icon-grid">
                         {filtered.map((favorite) => (
-                            <li key={favorite.id}>
+                            <li key={favorite.id} data-select-id={favorite.id}>
                                 <IconCard
                                     icon={favorite}
                                     favorite
@@ -313,6 +321,13 @@ export const FavoritesPage = () => {
                             </li>
                         ))}
                     </ul>
+                )}
+
+                {dragBox && (
+                    <div
+                        className="drag-select-box"
+                        style={{ left: dragBox.left, top: dragBox.top, width: dragBox.width, height: dragBox.height }}
+                    />
                 )}
             </div>
 
