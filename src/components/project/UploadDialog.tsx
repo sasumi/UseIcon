@@ -40,6 +40,7 @@ export const UploadDialog = ({
     const [prefix, setPrefix] = useState("");
     const [busy, setBusy] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [selectSeq, setSelectSeq] = useState(0);
     const handledFiles = useRef(new WeakSet<File>());
     const display = useDisplayStore((state) => state.display);
     const previewSize = display.size + display.padding * 2;
@@ -95,7 +96,7 @@ export const UploadDialog = ({
             if (file.type.startsWith("image/") && ext !== "svg") {
                 const svg = await imageFileToSvg(file);
                 mergeCandidates([
-                    { key: `image-${file.name}-${file.lastModified}`, className: nameFromFileName(file.name), svg, tags: [], checked: false },
+                    { key: `image-${file.name}-${file.lastModified}`, className: nameFromFileName(file.name), svg, tags: [], checked: true },
                 ]);
                 return;
             }
@@ -113,7 +114,7 @@ export const UploadDialog = ({
                         className: nameFromFileName(file.name),
                         svg: normalizeSvg(text),
                         tags: [],
-                        checked: false,
+                        checked: true,
                     },
                 ]);
                 return;
@@ -155,9 +156,33 @@ export const UploadDialog = ({
         setCandidates((prev) => prev.map((item) => (item.key === key ? { ...item, ...patch } : item)));
     };
 
+    /** 批量勾选：选项只触发操作，selectSeq 变化让触发器复位为已选计数 */
+    const changeSelection = (value: unknown) => {
+        setSelectSeq((seq) => seq + 1);
+        setCandidates((prev) =>
+            prev.map((item) => ({
+                ...item,
+                checked: value === "all" ? true : value === "none" ? false : !item.checked,
+            })),
+        );
+    };
+
     const checkedCount = candidates.filter((item) => item.checked).length;
 
     const { formProps, submitProps } = useDialogForm(parseClipboardText);
+
+    const clearCandidates = () => {
+        if (candidates.length === 0) {
+            return;
+        }
+        void Dialog.confirm({
+            title: "清空",
+            message: `确定清空 ${candidates.length} 个待导入图标吗？`,
+            confirmText: "清空",
+        })
+            .then(() => setCandidates([]))
+            .catch(() => undefined);
+    };
 
     const submit = async () => {
         const selected = candidates.filter((item) => item.checked);
@@ -205,9 +230,9 @@ export const UploadDialog = ({
 
                     <form {...formProps}>
                         <div className="upload-paste">
-                            <label className="upload-paste__label">粘贴 iconfont 内容</label>
                             <input
                                 className="ui-input"
+                                aria-label="粘贴 iconfont 内容"
                                 placeholder="粘贴 iconfont 的 symbol 内容或 SVG 字体代码"
                                 value={iconfontText}
                                 onChange={(event) => setIconfontText(event.target.value)}
@@ -224,9 +249,17 @@ export const UploadDialog = ({
                     {candidates.length > 0 && (
                         <div className="upload-candidates">
                             <div className="toolbar">
-                                <span className="ui-section-title">
-                                    待导入 {checkedCount} / {candidates.length}
-                                </span>
+                                <Select
+                                    key={selectSeq}
+                                    items={[
+                                        { value: "all", label: "全选", icon: <AppIcon name="check" /> },
+                                        { value: "invert", label: "反选", icon: <AppIcon name="refresh" /> },
+                                        { value: "none", label: "全不选", icon: <AppIcon name="close" /> },
+                                    ]}
+                                    triggerClassName="ui-btn small button-tonal"
+                                    placeholder={`已选 ${checkedCount} / ${candidates.length}`}
+                                    onChange={changeSelection}
+                                />
                                 <div className="spacer" />
                                 <input
                                     className="ui-input"
@@ -235,27 +268,6 @@ export const UploadDialog = ({
                                     value={prefix}
                                     onChange={(event) => setPrefix(event.target.value.replace(/\s+/g, "-"))}
                                 />
-                                <Select
-                                    items={[
-                                        { value: "all", label: "全选", icon: <AppIcon name="check" /> },
-                                        { value: "invert", label: "反选", icon: <AppIcon name="refresh" /> },
-                                        { value: "none", label: "全不选", icon: <AppIcon name="close" /> },
-                                    ]}
-                                    triggerClassName="ui-btn small button-tonal"
-                                    placeholder="全选"
-                                    onChange={(value) => {
-                                        if (value === "all") {
-                                            setCandidates((prev) => prev.map((item) => ({ ...item, checked: true })));
-                                        } else if (value === "none") {
-                                            setCandidates((prev) => prev.map((item) => ({ ...item, checked: false })));
-                                        } else {
-                                            setCandidates((prev) => prev.map((item) => ({ ...item, checked: !item.checked })));
-                                        }
-                                    }}
-                                />
-                                <button className="ui-btn small" type="button" onClick={() => setCandidates([])}>
-                                    清空
-                                </button>
                             </div>
                             <ul className="icon-grid">
                                 {candidates.map((item) => (
@@ -308,16 +320,10 @@ export const UploadDialog = ({
                 </div>
             </Dialog.Content>
             <Dialog.Action align="right">
-                <button
-                    className="ui-btn"
-                    type="button"
-                    onClick={() => {
-                        reset();
-                        setOpen(false);
-                    }}
-                >
-                    取消
+                <button className="ui-btn small" type="button" disabled={candidates.length === 0} onClick={clearCandidates}>
+                    清空
                 </button>
+                <div className="spacer" />
                 <button className="ui-btn primary" type="button" disabled={saving || checkedCount === 0} onClick={() => void submit()}>
                     {saving ? "导入中..." : `导入 ${checkedCount} 个图标`}
                 </button>

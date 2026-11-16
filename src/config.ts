@@ -35,6 +35,12 @@ export const PROJECT_SORT_STORAGE_PREFIX = "useicon:project-sort:";
 /** 收藏页图标排序偏好键 */
 export const FAVORITES_SORT_STORAGE_KEY = "useicon:favorites-sort";
 
+/** 分类历史存放键（记录用户用过的分类，供快速选择） */
+export const CATEGORY_HISTORY_STORAGE_KEY = "useicon:category-history";
+
+/** 公共库图标排序偏好键 */
+export const LIBRARY_SORT_STORAGE_KEY = "useicon:library-sort";
+
 /** 默认图标尺寸 */
 export const DEFAULT_ICON_SIZE = 24;
 

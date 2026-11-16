@@ -285,6 +285,23 @@ body.is-panel-resizing {
     &.padded {
         padding: 1.1rem 1.3rem 2rem;
     }
+
+    // 图标列表页：工具栏固定，滚动条落在图标列表上
+    &.with-icon-scroll {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+}
+
+// 图标列表滚动区（公共库 / 项目）
+.icon-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overflow-x: hidden;
+    padding-right: 0.2rem;
+    @include scrollbar(8px);
 }
 
 .content-toolbar {

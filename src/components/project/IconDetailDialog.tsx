@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, InlineTextEditor, Toast } from "minreact-ui";
-import { api } from "@/api";
+import { DEFAULT_CODE_TEMPLATE, DEFAULT_ICON_SIZE } from "@/config";
 import type { IconItem } from "@/types";
+import { rememberCategory } from "@/utils/category";
 import { copyText, downloadBlob, downloadSvg } from "@/utils/download";
 import { svgToPngBlob } from "@/utils/image";
 import { applyIconSize, detectSvgPaint, renderIconCode, setSvgColor, setSvgFillColor, setSvgScale, setSvgStrokeWidth } from "@/utils/svg";
 import { AppIcon } from "@/components/common/AppIcon";
+import { CategoryInput } from "@/components/common/CategoryInput";
 import { ColorPicker } from "@/components/common/ColorPicker";
 import { SvgPreview } from "@/components/common/SvgPreview";
 import { TagEditor } from "@/components/common/TagEditor";
@@ -13,36 +15,50 @@ import { SvgCodeDialog } from "@/components/project/SvgCodeDialog";
 
 const DIALOG_WIDTH = "38em";
 
-/** 图标详情：预览、编辑、代码与导出 */
+/** 详情对话框使用的图标字段（项目图标 / 公共库图标通用） */
+export type IconDetailTarget = Pick<IconItem, "id" | "className" | "svg" | "tags"> & { category?: string };
+
+/** 详情保存入参（svg 已应用外观调整） */
+export interface IconDetailPatch {
+    className: string; // 图标类名
+    tags: string[]; // 标签
+    svg: string; // 保存后的 SVG 源码
+    category?: string; // 分类
+}
+
+/** 图标详情：预览、编辑、代码与导出（公共库与项目共用） */
 export const IconDetailDialog = ({
     open,
     setOpen,
     icon,
-    template,
-    size,
     canEdit,
+    template = DEFAULT_CODE_TEMPLATE,
+    size = DEFAULT_ICON_SIZE,
     favorite = false,
     inCart = false,
+    categories,
     onFavorite,
     onCart,
-    onUpdated,
-    onDeleted,
+    onSave,
+    onDelete,
 }: {
     open: boolean; // 是否打开
     setOpen: (open: boolean) => void; // 显隐控制
-    icon: IconItem | null; // 当前图标
-    template: string; // 项目代码模板
-    size: number; // 项目图标尺寸
+    icon: IconDetailTarget | null; // 当前图标
     canEdit: boolean; // 是否可编辑
+    template?: string; // 代码模板
+    size?: number; // 图标尺寸
     favorite?: boolean; // 是否已收藏
     inCart?: boolean; // 是否已在采集车
+    categories?: string[]; // 可选分类（提供时显示分类编辑）
     onFavorite?: () => void; // 收藏切换
     onCart?: () => void; // 采集车切换
-    onUpdated: (icon: IconItem) => void; // 保存回调
-    onDeleted: (iconId: string) => void; // 删除回调
+    onSave: (patch: IconDetailPatch) => Promise<void>; // 保存
+    onDelete?: () => void; // 删除
 }) => {
     const [className, setClassName] = useState("");
     const [tags, setTags] = useState<string[]>([]);
+    const [category, setCategory] = useState("");
     const [baseSvg, setBaseSvg] = useState("");
     const [strokeWidth, setStrokeWidth] = useState("");
     const [color, setColor] = useState("");
@@ -57,6 +73,7 @@ export const IconDetailDialog = ({
         }
         setClassName(icon.className);
         setTags(icon.tags);
+        setCategory(icon.category ?? "");
         setBaseSvg(icon.svg);
         setStrokeWidth("");
         setColor("");
@@ -105,12 +122,8 @@ export const IconDetailDialog = ({
     const save = async () => {
         setSaving(true);
         try {
-            const updated = await api.icons.updateIcon(icon.id, {
-                className,
-                tags,
-                svg,
-            });
-            onUpdated(updated);
+            await onSave({ className, tags, svg, category: categories ? category.trim() : undefined });
+            rememberCategory(category);
             Toast.showSuccess("图标已保存");
             setOpen(false);
         } catch (error) {
@@ -125,18 +138,12 @@ export const IconDetailDialog = ({
             title: "删除",
             message: `确定删除「${icon.className}」吗？此操作不可恢复。`,
             confirmText: "删除",
-            onPreConfirm: () => {
-                void api.icons
-                    .deleteIcons([icon.id])
-                    .then(() => {
-                        Toast.showSuccess("图标已删除");
-                        setOpen(false);
-                        onDeleted(icon.id);
-                    })
-                    .catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "删除失败"));
-                return false;
-            },
-        }).catch(() => undefined);
+        })
+            .then(() => {
+                onDelete?.();
+                setOpen(false);
+            })
+            .catch(() => undefined);
     };
 
     const downloadPng = async () => {
@@ -197,6 +204,23 @@ export const IconDetailDialog = ({
                             <div className="detail-field">
                                 <TagEditor value={tags} onChange={setTags} disabled={!canEdit} />
                             </div>
+
+                            {categories &&
+                                (canEdit ? (
+                                    <div className="detail-field">
+                                        <label>分类</label>
+                                        <CategoryInput value={category} onChange={setCategory} options={categories} />
+                                    </div>
+                                ) : (
+                                    category && (
+                                        <div className="detail-field">
+                                            <label>分类</label>
+                                            <div>
+                                                <span className="ui-chip">{category}</span>
+                                            </div>
+                                        </div>
+                                    )
+                                ))}
 
                             {canEdit && (
                                 <div className="detail-appearance">
@@ -337,7 +361,7 @@ export const IconDetailDialog = ({
                 }}
             />
             <Dialog.Action align="right">
-                {canEdit && (
+                {canEdit && onDelete && (
                     <button className="ui-btn danger" type="button" onClick={remove}>
                         <AppIcon name="trash" />
                         删除

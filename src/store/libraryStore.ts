@@ -1,5 +1,6 @@
 import { api } from "@/api";
 import type { FavoriteIcon, LibraryCategoryCount, LibraryIcon } from "@/types";
+import { favoriteKeyOf } from "@/utils/iconDedupe";
 import { create } from "zustand";
 
 /** 公共库每页条数（滚动加载） */
@@ -25,7 +26,10 @@ interface LibraryState {
     refreshLibrary: () => Promise<void>; // 重新加载已加载的部分（增删改后）
     fetchFavorites: () => Promise<void>; // 加载个人收藏
     addFavorite: (input: Parameters<typeof api.favorites.addFavorite>[0]) => Promise<FavoriteIcon>; // 添加收藏
-    updateFavorite: (favoriteId: string, patch: Partial<Pick<FavoriteIcon, "className" | "tags">>) => Promise<void>; // 更新收藏
+    addFavorites: (
+        inputs: Parameters<typeof api.favorites.addFavorite>[0][],
+    ) => Promise<{ added: number; ignored: number }>; // 批量收藏（自动去重，返回新增与忽略数量）
+    updateFavorite: (favoriteId: string, patch: Partial<Pick<FavoriteIcon, "className" | "category" | "tags">>) => Promise<void>; // 更新收藏
     removeFavorite: (favoriteId: string) => Promise<void>; // 删除收藏
     findFavoriteByLibraryId: (libraryId: string) => FavoriteIcon | undefined; // 按公共库 ID 查收藏
 }
@@ -155,9 +159,40 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         }
     },
     addFavorite: async (input) => {
+        // 收藏去重：同一图标（公共库 ID 优先）已收藏时直接复用，避免重复记录
+        const key = favoriteKeyOf(input);
+        const existed = get().favorites.find((item) => favoriteKeyOf(item) === key);
+        if (existed) {
+            return existed;
+        }
         const favorite = await api.favorites.addFavorite(input);
         await get().fetchFavorites();
         return favorite;
+    },
+    addFavorites: async (inputs) => {
+        // 先按已有收藏与本批重复去重，只提交新增的图标
+        const keys = new Set(get().favorites.map(favoriteKeyOf));
+        const pending: Parameters<typeof api.favorites.addFavorite>[0][] = [];
+        inputs.forEach((input) => {
+            const key = favoriteKeyOf(input);
+            if (keys.has(key)) {
+                return;
+            }
+            keys.add(key);
+            pending.push(input);
+        });
+        const ignored = inputs.length - pending.length;
+        if (pending.length === 0) {
+            return { added: 0, ignored };
+        }
+        const results = await Promise.allSettled(pending.map((input) => api.favorites.addFavorite(input)));
+        await get().fetchFavorites();
+        const added = results.filter((item) => item.status === "fulfilled").length;
+        if (added === 0) {
+            const failed = results.find((item): item is PromiseRejectedResult => item.status === "rejected");
+            throw failed?.reason ?? new Error("收藏失败");
+        }
+        return { added, ignored: ignored + (pending.length - added) };
     },
     updateFavorite: async (favoriteId, patch) => {
         await api.favorites.updateFavorite(favoriteId, patch);
@@ -169,8 +204,4 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     },
     findFavoriteByLibraryId: (libraryId) => get().favorites.find((item) => item.libraryId === libraryId),
 }));
-
-/** 所有收藏中出现过的标签 */
-export const collectFavoriteTags = (favorites: FavoriteIcon[]): string[] =>
-    Array.from(new Set(favorites.flatMap((item) => item.tags))).sort((a, b) => a.localeCompare(b, "zh-CN"));
 

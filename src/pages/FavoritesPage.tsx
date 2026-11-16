@@ -3,16 +3,21 @@ import { DIALOG_SIZE_SMALL, Dialog, DropdownMenu, Toast } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import type { FavoriteIcon, IconItem } from "@/types";
 import { DEFAULT_ICON_SIZE, FAVORITES_SORT_STORAGE_KEY } from "@/config";
+import { useClearOnBlankClick } from "@/hooks/useClearOnBlankClick";
 import { useDialogForm } from "@/hooks/useDialogForm";
+import { useTimedTip } from "@/hooks/useTimedTip";
 import { navigate } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
 import { openLoginDialog } from "@/store/loginDialogStore";
 import { cartItemFromFavorite, useCartStore } from "@/store/cartStore";
-import { collectFavoriteTags, useLibraryStore } from "@/store/libraryStore";
+import { useLibraryStore } from "@/store/libraryStore";
+import { rememberCategory } from "@/utils/category";
 import { AppIcon } from "@/components/common/AppIcon";
+import { CategoryInput } from "@/components/common/CategoryInput";
 import { EmptyState } from "@/components/common/EmptyState";
 import { SvgPreview } from "@/components/common/SvgPreview";
 import { TagEditor } from "@/components/common/TagEditor";
+import { TipBubble } from "@/components/common/TipBubble";
 import { SidePanel } from "@/components/common/SidePanel";
 import { ExportMenu } from "@/components/project/ExportMenu";
 import { IconCard } from "@/components/project/IconCard";
@@ -41,7 +46,7 @@ const readSortMode = (): FavoritesSortMode => {
     }
 };
 
-/** 我的收藏：跨项目 / 公共库的个人图标集合，可打标签、采集 */
+/** 我的收藏：跨项目 / 公共库的个人图标集合，可打标签、采集与批量操作 */
 export const FavoritesPage = () => {
     const user = useAuthStore((state) => state.user);
     const favorites = useLibraryStore((state) => state.favorites);
@@ -49,12 +54,15 @@ export const FavoritesPage = () => {
     const removeFavorite = useLibraryStore((state) => state.removeFavorite);
     const toggleCart = useCartStore((state) => state.toggle);
     const cartItems = useCartStore((state) => state.items);
+    const { tip: cartTip, show: showCartTip } = useTimedTip();
 
     const [keyword, setKeyword] = useState("");
-    const [tag, setTag] = useState("");
+    const [category, setCategory] = useState("");
     const [sortMode, setSortMode] = useState<FavoritesSortMode>(readSortMode);
     const [selected, setSelected] = useState<string[]>([]);
     const [editing, setEditing] = useState<FavoriteIcon | null>(null);
+
+    useClearOnBlankClick(() => setSelected((prev) => (prev.length === 0 ? prev : [])));
 
     useEffect(() => {
         if (user) {
@@ -62,35 +70,42 @@ export const FavoritesPage = () => {
         }
     }, [user, fetchFavorites]);
 
-    const tags = useMemo(() => collectFavoriteTags(favorites), [favorites]);
+    const categories = useMemo(
+        () => Array.from(new Set(favorites.map((item) => item.category || "").filter(Boolean))).sort((a, b) => a.localeCompare(b, "zh-CN")),
+        [favorites],
+    );
 
-    const tagCounts = useMemo(() => {
+    const categoryCounts = useMemo(() => {
         const map: Record<string, number> = {};
         favorites.forEach((item) => {
-            item.tags.forEach((itemTag) => {
-                map[itemTag] = (map[itemTag] || 0) + 1;
-            });
+            if (item.category) {
+                map[item.category] = (map[item.category] || 0) + 1;
+            }
         });
         return map;
     }, [favorites]);
 
-    // 标签被删掉后回到全部，避免筛选条件悬空
+    // 分类被清空后回到全部，避免筛选条件悬空
     useEffect(() => {
-        if (tag && !tags.includes(tag)) {
-            setTag("");
+        if (category && !categories.includes(category)) {
+            setCategory("");
         }
-    }, [tag, tags]);
+    }, [category, categories]);
 
     const filtered = useMemo(() => {
         const query = keyword.trim().toLowerCase();
         const result = favorites.filter((item) => {
-            if (tag && !item.tags.includes(tag)) {
+            if (category && item.category !== category) {
                 return false;
             }
             if (!query) {
                 return true;
             }
-            return item.className.toLowerCase().includes(query) || item.tags.some((itemTag) => itemTag.toLowerCase().includes(query));
+            return (
+                item.className.toLowerCase().includes(query) ||
+                (item.category || "").toLowerCase().includes(query) ||
+                item.tags.some((itemTag) => itemTag.toLowerCase().includes(query))
+            );
         });
         if (sortMode === "default") {
             return result;
@@ -98,7 +113,7 @@ export const FavoritesPage = () => {
         return [...result].sort((a, b) =>
             sortMode === "name-asc" ? a.className.localeCompare(b.className, "zh") : b.className.localeCompare(a.className, "zh"),
         );
-    }, [favorites, keyword, tag, sortMode]);
+    }, [favorites, keyword, category, sortMode]);
 
     const changeSortMode = (next: FavoritesSortMode) => {
         setSortMode(next);
@@ -127,14 +142,21 @@ export const FavoritesPage = () => {
     /** 批量采集：已在采集车里的跳过 */
     const addSelectedToCart = () => {
         const keys = new Set(cartItems.map((item) => item.key));
+        let added = 0;
         selectedFavorites.forEach((favorite) => {
             const item = cartItemFromFavorite(favorite);
             if (!keys.has(item.key)) {
                 keys.add(item.key);
                 toggleCart(item);
+                added += 1;
             }
         });
-        Toast.showSuccess(`已加入采集车 ${selectedFavorites.length} 个图标`);
+        const ignored = selectedFavorites.length - added;
+        showCartTip(
+            added > 0
+                ? `已加入采集车 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}`
+                : `所选 ${ignored} 个图标均已在采集车中`,
+        );
     };
 
     /** 批量移除收藏 */
@@ -161,6 +183,7 @@ export const FavoritesPage = () => {
         id: favorite.id,
         projectId: "favorites",
         className: favorite.className,
+        category: favorite.category,
         svg: favorite.svg,
         tags: favorite.tags,
         createdBy: favorite.userId,
@@ -190,16 +213,16 @@ export const FavoritesPage = () => {
                 </div>
                 <div className="side-panel__body">
                     <div className="nav-list">
-                        <div className={`nav-item ${tag === "" ? "active" : ""}`} onClick={() => setTag("")}>
+                        <div className={`nav-item ${category === "" ? "active" : ""}`} onClick={() => setCategory("")}>
                             <AppIcon name="star" />
                             全部
                             <span className="nav-item__count">{favorites.length}</span>
                         </div>
-                        {tags.map((item) => (
-                            <div key={item} className={`nav-item ${tag === item ? "active" : ""}`} onClick={() => setTag(item)}>
-                                <AppIcon name="tag" />
+                        {categories.map((item) => (
+                            <div key={item} className={`nav-item ${category === item ? "active" : ""}`} onClick={() => setCategory(item)}>
+                                <AppIcon name="folder" />
                                 <span className="ellipsis">{item}</span>
-                                <span className="nav-item__count">{tagCounts[item] || 0}</span>
+                                <span className="nav-item__count">{categoryCounts[item] || 0}</span>
                             </div>
                         ))}
                     </div>
@@ -216,15 +239,24 @@ export const FavoritesPage = () => {
                     )}
                     <div className="ui-search project-toolbar__search">
                         <AppIcon name="search" />
-                        <input className="ui-input" placeholder="搜索" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
+                        <input
+                            className="ui-input"
+                            type="search"
+                            placeholder="搜索"
+                            value={keyword}
+                            onChange={(event) => setKeyword(event.target.value)}
+                        />
                     </div>
                     {selected.length > 0 && (
                         <div className="batch-actions">
                             <span className="batch-actions__count">已选 {selected.length} 个</span>
-                            <button className="ui-btn small" type="button" onClick={addSelectedToCart}>
-                                <AppIcon name="cart" />
-                                采集
-                            </button>
+                            <span className="tip-anchor">
+                                <button className="ui-btn small" type="button" onClick={addSelectedToCart}>
+                                    <AppIcon name="cart" />
+                                    采集
+                                </button>
+                                <TipBubble text={cartTip} />
+                            </span>
                             <ExportMenu icons={exportIcons} projectName="我的收藏" size={DEFAULT_ICON_SIZE} label="导出" />
                             <button className="ui-btn small danger" type="button" onClick={removeSelected}>
                                 <AppIcon name="trash" />
@@ -286,6 +318,7 @@ export const FavoritesPage = () => {
 
             <FavoriteEditDialog
                 favorite={editing}
+                categories={categories}
                 open={Boolean(editing)}
                 setOpen={(open) => !open && setEditing(null)}
                 onSaved={() => {
@@ -296,26 +329,30 @@ export const FavoritesPage = () => {
     );
 };
 
-/** 收藏编辑：名称 / 标题 / 标签 */
+/** 收藏编辑：名称 / 分类 / 标签 */
 const FavoriteEditDialog = ({
     favorite,
+    categories,
     open,
     setOpen,
     onSaved,
 }: {
     favorite: FavoriteIcon | null; // 收藏项
+    categories: string[]; // 已有分类（供快速选择）
     open: boolean; // 是否打开
     setOpen: (open: boolean) => void; // 显隐控制
     onSaved: () => void; // 保存回调
 }) => {
     const updateFavorite = useLibraryStore((state) => state.updateFavorite);
     const [className, setClassName] = useState("");
+    const [category, setCategory] = useState("");
     const [tags, setTags] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (open && favorite) {
             setClassName(favorite.className);
+            setCategory(favorite.category || "");
             setTags(favorite.tags);
         }
     }, [open, favorite]);
@@ -328,8 +365,10 @@ const FavoriteEditDialog = ({
         try {
             await updateFavorite(favorite.id, {
                 className,
+                category,
                 tags,
             });
+            rememberCategory(category);
             Toast.showSuccess("收藏已更新");
             onSaved();
             setOpen(false);
@@ -359,6 +398,10 @@ const FavoriteEditDialog = ({
                             <div className="ui-field">
                                 <label>className</label>
                                 <input className="ui-input" value={className} onChange={(event) => setClassName(event.target.value)} />
+                            </div>
+                            <div className="ui-field">
+                                <label>分类</label>
+                                <CategoryInput value={category} onChange={setCategory} options={categories} />
                             </div>
                             <div className="ui-field">
                                 <label>标签</label>

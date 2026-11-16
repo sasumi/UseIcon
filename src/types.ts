@@ -33,6 +33,7 @@ export interface FavoriteIcon {
     id: string; // 收藏记录 ID
     userId: string; // 所属用户
     className: string; // 图标类名（用于代码模板）
+    category?: string; // 分类（收藏时继承来源图标，可单独编辑）
     svg: string; // SVG 源码
     tags: string[]; // 个人标签
     source: "library" | "project"; // 来源类型
@@ -75,6 +76,7 @@ export interface IconItem {
     id: string; // 图标 ID
     projectId: string; // 所属项目 ID
     className: string; // 图标类名（用于代码模板）
+    category?: string; // 分类
     svg: string; // 标准化的 SVG 源码
     tags: string[]; // 标签
     libraryId?: string; // 来自公共库时的引用 ID
@@ -129,7 +131,7 @@ export interface IconInput {
     svg: string; // SVG 源码
     tags?: string[]; // 标签
     libraryId?: string; // 公共库引用 ID
-    category?: string; // 分类（仅公共库使用）
+    category?: string; // 分类
 }
 
 /** 上传/导入时解析出的候选图标 */

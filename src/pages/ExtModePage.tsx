@@ -349,7 +349,13 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
             <div className="extmode-toolbar">
                 <div className="ui-search extmode-search">
                     <AppIcon name="search" />
-                    <input className="ui-input" placeholder="搜索图标" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
+                    <input
+                        className="ui-input"
+                        type="search"
+                        placeholder="搜索图标"
+                        value={keyword}
+                        onChange={(event) => setKeyword(event.target.value)}
+                    />
                 </div>
                 <DropdownMenu
                     items={SORT_ITEMS}

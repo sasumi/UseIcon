@@ -14,6 +14,7 @@ export const listFavorites = (): Promise<FavoriteIcon[]> =>
  */
 export const addFavorite = (input: {
     className: string;
+    category?: string;
     svg: string;
     tags?: string[];
     source: "library" | "project";
@@ -28,6 +29,7 @@ export const addFavorite = (input: {
     }
     return iconPostJSON("favorite/add", {
         className: sanitizeIconName(input.className),
+        category: (input.category || "").trim(),
         svg,
         tags: cleanTags(input.tags),
         source: input.source,
@@ -36,14 +38,17 @@ export const addFavorite = (input: {
     });
 };
 
-/** 更新收藏（类名 / 标签） */
+/** 更新收藏（类名 / 分类 / 标签） */
 export const updateFavorite = (
     favoriteId: string,
-    patch: Partial<Pick<FavoriteIcon, "className" | "tags">>,
+    patch: Partial<Pick<FavoriteIcon, "className" | "category" | "tags">>,
 ): Promise<FavoriteIcon> => {
     const payload: Record<string, unknown> = { id: favoriteId };
     if (patch.className !== undefined) {
         payload.className = sanitizeIconName(patch.className);
+    }
+    if (patch.category !== undefined) {
+        payload.category = patch.category.trim();
     }
     if (patch.tags !== undefined) {
         payload.tags = cleanTags(patch.tags);

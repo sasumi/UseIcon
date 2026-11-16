@@ -3,6 +3,9 @@ import { Dialog, DropdownMenu, EmptyHolder, LoadingHolder, Select, Toast } from 
 import type { MenuEntry } from "minreact-ui";
 import { api } from "@/api";
 import { PROJECT_SORT_STORAGE_PREFIX } from "@/config";
+import { useClearOnBlankClick } from "@/hooks/useClearOnBlankClick";
+import { useDragSelect } from "@/hooks/useDragSelect";
+import { useTimedTip } from "@/hooks/useTimedTip";
 import { extModePath, navigate, projectPath } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
 import { openLoginDialog } from "@/store/loginDialogStore";
@@ -11,17 +14,20 @@ import { useLibraryStore } from "@/store/libraryStore";
 import { useProjectStore } from "@/store/projectStore";
 import type { IconItem } from "@/types";
 import { copyText, downloadSvg } from "@/utils/download";
+import { favoriteKeyOf } from "@/utils/iconDedupe";
 import { getProjectAccess } from "@/utils/permission";
 import { renderIconCode } from "@/utils/svg";
 import { AppIcon } from "@/components/common/AppIcon";
 import { EmptyState } from "@/components/common/EmptyState";
 import { SidePanel } from "@/components/common/SidePanel";
+import { TipBubble } from "@/components/common/TipBubble";
 import { BatchOptimizeDialog } from "@/components/project/BatchOptimizeDialog";
 import { BatchRenameDialog } from "@/components/project/BatchRenameDialog";
 import { ExportMenu } from "@/components/project/ExportMenu";
 import { IconCard } from "@/components/project/IconCard";
 import { DisplayControl } from "@/components/library/DisplayPanel";
 import { IconDetailDialog } from "@/components/project/IconDetailDialog";
+import type { IconDetailPatch } from "@/components/project/IconDetailDialog";
 import { PickLibraryDialog } from "@/components/project/PickLibraryDialog";
 import { ProjectFormDialog } from "@/components/project/ProjectFormDialog";
 import { ProjectBasicsDialog } from "@/components/project/ProjectBasicsDialog";
@@ -62,7 +68,7 @@ const readSortMode = (projectId: string): SortMode => {
     }
 };
 
-/** 项目工作区：侧栏项目列表 + 主区图标管理（未指定项目时默认打开第一个） */
+/** 项目工作区：侧栏项目列表 + 主区图标管理（未指定项目时默认打开第一个；支持框选与批量采集 / 收藏） */
 export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     const user = useAuthStore((state) => state.user);
     const projects = useProjectStore((state) => state.projects);
@@ -79,7 +85,9 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
 
     const [keyword, setKeyword] = useState("");
     const [tag, setTag] = useState("");
+    const [category, setCategory] = useState("");
     const [selected, setSelected] = useState<string[]>([]);
+    const gridRef = useRef<HTMLUListElement | null>(null);
     const [createOpen, setCreateOpen] = useState(false);
     const [uploadOpen, setUploadOpen] = useState(false);
     const [pickOpen, setPickOpen] = useState(false);
@@ -93,10 +101,11 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
 
     const favorites = useLibraryStore((state) => state.favorites);
     const addFavorite = useLibraryStore((state) => state.addFavorite);
+    const addFavorites = useLibraryStore((state) => state.addFavorites);
     const removeFavorite = useLibraryStore((state) => state.removeFavorite);
     const cartItems = useCartStore((state) => state.items);
     const toggleCart = useCartStore((state) => state.toggle);
-    const setCartOpen = useCartStore((state) => state.setOpen);
+    const { tip: cartTip, show: showCartTip } = useTimedTip();
 
     // 未指定项目时默认打开第一个项目
     useEffect(() => {
@@ -110,6 +119,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
         setSelected([]);
         setKeyword("");
         setTag("");
+        setCategory("");
         if (projectId) {
             void loadProject(projectId);
         }
@@ -128,16 +138,29 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
         return Array.from(set).slice(0, 24);
     }, [icons]);
 
+    const categories = useMemo(() => {
+        const set = new Set<string>();
+        icons.forEach((icon) => icon.category && set.add(icon.category));
+        return Array.from(set).sort((a, b) => a.localeCompare(b, "zh-CN"));
+    }, [icons]);
+
     const filtered = useMemo(() => {
         const query = keyword.trim().toLowerCase();
         const matched = icons.filter((icon) => {
             if (tag && !icon.tags.includes(tag)) {
                 return false;
             }
+            if (category && icon.category !== category) {
+                return false;
+            }
             if (!query) {
                 return true;
             }
-            return icon.className.toLowerCase().includes(query) || icon.tags.some((item) => item.toLowerCase().includes(query));
+            return (
+                icon.className.toLowerCase().includes(query) ||
+                (icon.category || "").toLowerCase().includes(query) ||
+                icon.tags.some((item) => item.toLowerCase().includes(query))
+            );
         });
         if (sortMode === "name-asc") {
             return [...matched].sort((a, b) => a.className.localeCompare(b.className));
@@ -146,17 +169,26 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
             return [...matched].sort((a, b) => b.className.localeCompare(a.className));
         }
         return matched;
-    }, [icons, keyword, tag, sortMode]);
+    }, [icons, keyword, tag, category, sortMode]);
 
     const selectedIcons = useMemo(() => icons.filter((icon) => selected.includes(icon.id)), [icons, selected]);
     const canSort = sortMode === "custom" && access.canEdit;
+    const dragBox = useDragSelect({
+        containerRef: gridRef,
+        enabled: access.canEdit && filtered.length > 0,
+        onSelect: (ids, additive) => setSelected((prev) => (additive ? Array.from(new Set([...prev, ...ids])) : ids)),
+    });
+    useClearOnBlankClick(() => setSelected((prev) => (prev.length === 0 ? prev : [])));
     const template = project?.codeTemplate || "";
     const iconSize = project?.iconSize || 24;
     const activeProjectId = project?.id || projectId || "";
 
     const codeFor = (icon: IconItem): string => renderIconCode(template, icon, iconSize);
 
-    const favoriteOf = (icon: IconItem) => favorites.find((item) => item.projectId === activeProjectId && item.className === icon.className);
+    const favoriteOf = (icon: IconItem) =>
+        favorites.find(
+            (item) => favoriteKeyOf(item) === favoriteKeyOf({ className: icon.className, libraryId: icon.libraryId, projectId: activeProjectId }),
+        );
     const inCart = (icon: IconItem) => cartItems.some((item) => item.key === `project:${activeProjectId}:${icon.id}`);
 
     const toggleIconFavorite = (icon: IconItem) => {
@@ -174,10 +206,12 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
         }
         void addFavorite({
             className: icon.className,
+            category: icon.category,
             svg: icon.svg,
             tags: icon.tags,
             source: "project",
             projectId,
+            libraryId: icon.libraryId || undefined,
         }).catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "收藏失败"));
     };
 
@@ -228,13 +262,48 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     };
 
     const addSelectedToCart = () => {
+        let added = 0;
         selectedIcons.forEach((icon) => {
             const item = cartItemFromProjectIcon(activeProjectId, icon);
             if (!cartItems.some((entry) => entry.key === item.key)) {
                 toggleCart(item);
+                added += 1;
             }
         });
-        setCartOpen(true);
+        const ignored = selectedIcons.length - added;
+        showCartTip(
+            added > 0
+                ? `已加入采集车 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}`
+                : `所选 ${ignored} 个图标均已在采集车中`,
+        );
+    };
+
+    /** 批量收藏：已收藏过的图标跳过并在提示里说明忽略数量 */
+    const addSelectedToFavorites = () => {
+        if (!user) {
+            Toast.showInfo("登录后即可收藏图标");
+            openLoginDialog();
+            return;
+        }
+        void addFavorites(
+            selectedIcons.map((icon) => ({
+                className: icon.className,
+                category: icon.category,
+                svg: icon.svg,
+                tags: icon.tags,
+                source: "project" as const,
+                projectId: activeProjectId,
+                libraryId: icon.libraryId || undefined,
+            })),
+        )
+            .then(({ added, ignored }) => {
+                if (added === 0) {
+                    Toast.showInfo(`所选 ${ignored} 个图标都已在收藏中，已忽略`);
+                    return;
+                }
+                Toast.showSuccess(`已收藏 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}`);
+            })
+            .catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "收藏失败"));
     };
 
     const toggleSelect = (iconId: string, checked: boolean) => {
@@ -280,6 +349,26 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
             () => Toast.showSuccess(`已复制 ${icon.className} 的代码`),
             () => Toast.showError("复制失败"),
         );
+
+    const saveDetail = async (patch: IconDetailPatch) => {
+        if (!detail) {
+            return;
+        }
+        updateIcons([await api.icons.updateIcon(detail.id, patch)]);
+    };
+
+    const deleteDetail = () => {
+        if (!detail) {
+            return;
+        }
+        void api.icons
+            .deleteIcons([detail.id])
+            .then(() => {
+                removeIcons([detail.id]);
+                Toast.showSuccess("图标已删除");
+            })
+            .catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "删除失败"));
+    };
 
     const openExtMode = () => {
         if (!project) {
@@ -377,7 +466,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
         <>
             {sidebar}
 
-            <div className="content-panel padded">
+            <div className="content-panel padded with-icon-scroll">
                 <div className="project-header">
                     <div className="project-header__main">
                         <div className="project-header__title">
@@ -435,9 +524,16 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                     {selected.length > 0 && (
                         <div className="batch-actions">
                             <span className="batch-actions__count">已选 {selected.length} 个</span>
-                            <button className="ui-btn small" type="button" onClick={addSelectedToCart}>
-                                <AppIcon name="cart" />
-                                采集
+                            <span className="tip-anchor">
+                                <button className="ui-btn small" type="button" onClick={addSelectedToCart}>
+                                    <AppIcon name="cart" />
+                                    采集
+                                </button>
+                                <TipBubble text={cartTip} />
+                            </span>
+                            <button className="ui-btn small" type="button" onClick={addSelectedToFavorites}>
+                                <AppIcon name="star" />
+                                收藏
                             </button>
                             <button className="ui-btn small" type="button" onClick={() => setOptimizeOpen(true)}>
                                 <AppIcon name="settings" />
@@ -459,6 +555,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                         <AppIcon name="search" />
                         <input
                             className="ui-input"
+                            type="search"
                             placeholder="搜索"
                             value={keyword}
                             onChange={(event) => setKeyword(event.target.value)}
@@ -476,6 +573,17 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                                 {SORT_LABELS[sortMode]}
                             </button>
                         }
+                    />
+                    <Select
+                        key={`${project.id}:category`}
+                        items={[
+                            { value: "", label: "全部分类", icon: <AppIcon name="layers" /> },
+                            ...categories.map((item) => ({ value: item, label: item, icon: <AppIcon name="folder" /> })),
+                        ]}
+                        value={category}
+                        placeholder="分类"
+                        onChange={(value) => setCategory(typeof value === "string" ? value : "")}
+                        triggerClassName={`ui-btn small button-tonal project-toolbar__category ${category ? "has-value" : ""}`}
                     />
                     <Select
                         key={`${project.id}:${tag}`}
@@ -507,10 +615,12 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 ) : filtered.length === 0 ? (
                     <EmptyState text="没有匹配当前筛选条件的图标" />
                 ) : (
-                    <ul className={`icon-grid ${sortMode === "custom" ? "is-sortable" : ""}`}>
+                    <div className="icon-scroll">
+                        <ul ref={gridRef} className={`icon-grid ${sortMode === "custom" ? "is-sortable" : ""}`}>
                         {filtered.map((icon) => (
                             <li
                                 key={icon.id}
+                                data-select-id={icon.id}
                                 className={[
                                     dragIconId === icon.id ? "dragging" : "",
                                     dropTarget?.id === icon.id ? `drop-${dropTarget.position}` : "",
@@ -604,7 +714,15 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                                 />
                             </li>
                         ))}
-                    </ul>
+                        </ul>
+                    </div>
+                )}
+
+                {dragBox && (
+                    <div
+                        className="drag-select-box"
+                        style={{ left: dragBox.left, top: dragBox.top, width: dragBox.width, height: dragBox.height }}
+                    />
                 )}
             </div>
 
@@ -658,12 +776,13 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 template={template}
                 size={iconSize}
                 canEdit={access.canEdit}
+                categories={categories}
                 favorite={detail ? Boolean(favoriteOf(detail)) : false}
                 inCart={detail ? inCart(detail) : false}
                 onFavorite={() => detail && toggleIconFavorite(detail)}
                 onCart={() => detail && toggleIconCart(detail)}
-                onUpdated={(updated) => updateIcons([updated])}
-                onDeleted={(iconId) => removeIcons([iconId])}
+                onSave={saveDetail}
+                onDelete={deleteDetail}
             />
             {createDialog}
         </>
@@ -768,7 +887,13 @@ const ProjectList = ({ activeId, onCreate }: { activeId: string; onCreate: () =>
             <div className="side-panel__body">
                 <div className="ui-search project-list__search">
                     <AppIcon name="search" />
-                    <input className="ui-input" placeholder="筛选项目" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
+                    <input
+                        className="ui-input"
+                        type="search"
+                        placeholder="筛选项目"
+                        value={keyword}
+                        onChange={(event) => setKeyword(event.target.value)}
+                    />
                 </div>
                 <div className="nav-list">
                     {filtered.map((item) => (

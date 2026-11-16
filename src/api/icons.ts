@@ -28,7 +28,7 @@ export const createIcons = async (projectId: string, inputs: IconInput[]): Promi
         } catch {
             throw new ApiError(`图标「${input.className}」的 SVG 无法解析`, "invalid-svg");
         }
-        return { className: input.className, svg, tags: cleanTags(input.tags), libraryId: input.libraryId };
+        return { className: input.className, category: input.category?.trim() || "", svg, tags: cleanTags(input.tags), libraryId: input.libraryId };
     });
 
     const created: IconItem[] = [];
@@ -51,10 +51,16 @@ export const addIconsFromLibrary = (projectId: string, libraryIds: string[]): Pr
 };
 
 /** 更新图标 */
-export const updateIcon = (iconId: string, patch: Partial<Pick<IconItem, "className" | "svg" | "tags">>): Promise<IconItem> => {
+export const updateIcon = (
+    iconId: string,
+    patch: Partial<Pick<IconItem, "className" | "category" | "svg" | "tags">>,
+): Promise<IconItem> => {
     const item: Record<string, unknown> = { id: iconId };
     if (patch.className !== undefined) {
         item.className = sanitizeIconName(patch.className);
+    }
+    if (patch.category !== undefined) {
+        item.category = patch.category.trim();
     }
     if (patch.svg !== undefined) {
         try {

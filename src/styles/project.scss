@@ -88,7 +88,8 @@
         }
     }
 
-    // 标签筛选：select-like 触发器（无边框 tonal）
+    // 分类 / 标签筛选：select-like 触发器（无边框 tonal）
+    .project-toolbar__category,
     .project-toolbar__tag {
         display: inline-flex;
         align-items: center;
@@ -134,6 +135,35 @@
         &.has-value {
             color: var(--color-accent);
         }
+    }
+}
+
+// 提示气泡（采集等操作反馈，延时自动关闭）
+.tip-anchor {
+    position: relative;
+    display: inline-flex;
+}
+
+.tip-bubble {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    z-index: 30;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 4px;
+    background: var(--color-surface);
+    color: var(--color);
+    font-size: 0.72rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px color-mix(in srgb, #000000 14%, transparent);
+    pointer-events: none;
+
+    // 图标卡片上的气泡：定位到卡片右上角操作区下方
+    .icon-card > & {
+        top: 2.1rem;
+        right: 0.32rem;
     }
 }
 
@@ -195,6 +225,21 @@
     }
 }
 
+// 框选矩形（拖动选择图标）
+.drag-select-box {
+    position: fixed;
+    z-index: 20;
+    border: 1px solid var(--color-accent);
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    pointer-events: none;
+}
+
+body.is-drag-selecting {
+    cursor: crosshair;
+    user-select: none;
+}
+
 .icon-card {
     position: relative;
     display: flex;
@@ -214,7 +259,8 @@
     &:hover {
         border-color: var(--color-accent);
 
-        .icon-card__check {
+        .icon-card__check,
+        .icon-card__actions {
             opacity: 1;
         }
     }
@@ -233,7 +279,7 @@
         top: 0.3rem;
         left: 0.35rem;
         z-index: 1;
-        opacity: 0;
+        opacity: 0.5;
         transition: opacity 0.15s ease;
     }
 
@@ -265,6 +311,8 @@
         display: flex;
         align-items: center;
         gap: 0.15rem;
+        opacity: 0.5;
+        transition: opacity 0.15s ease;
     }
 
     .icon-card__meta {
@@ -498,12 +546,6 @@
     gap: 0.4rem;
     padding-top: 0.2rem;
 
-    &__label {
-        flex: none;
-        color: var(--color-secondary);
-        font-size: 0.78rem;
-    }
-
     .ui-input {
         flex: 1 1 auto;
         min-width: 0;
@@ -536,7 +578,8 @@
         &:hover {
             border-color: var(--color-border);
 
-            .icon-card__check {
+            .icon-card__check,
+            .icon-card__actions {
                 opacity: 1;
             }
         }

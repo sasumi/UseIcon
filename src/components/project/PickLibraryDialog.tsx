@@ -4,6 +4,7 @@ import { api } from "@/api";
 import { LIBRARY_CATEGORIES } from "@/data/library";
 import { useLibraryStore } from "@/store/libraryStore";
 import type { LibraryIcon } from "@/types";
+import { filterDuplicateIcons } from "@/utils/iconDedupe";
 import { AppIcon } from "@/components/common/AppIcon";
 import { EmptyState } from "@/components/common/EmptyState";
 import { SvgPreview } from "@/components/common/SvgPreview";
@@ -89,8 +90,19 @@ export const PickLibraryDialog = ({
         }
         setSaving(true);
         try {
-            const created = await api.icons.addIconsFromLibrary(projectId, selected);
-            Toast.showSuccess(`已加入 ${created.length} 个图标`);
+            // 目标项目已有的图标（公共库 ID 或类名相同）直接跳过
+            const projectIcons = await api.icons.listIcons(projectId);
+            const chosen = icons.filter((icon) => selected.includes(icon.id));
+            const { kept, ignored } = filterDuplicateIcons(chosen, projectIcons);
+            if (kept.length === 0) {
+                Toast.showInfo(`所选 ${ignored} 个图标都已在项目中，已忽略`);
+                return;
+            }
+            const created = await api.icons.addIconsFromLibrary(
+                projectId,
+                kept.map((icon) => icon.id),
+            );
+            Toast.showSuccess(`已加入 ${created.length} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在的图标` : ""}`);
             setOpen(false);
             onAdded();
         } catch (error) {
@@ -110,6 +122,7 @@ export const PickLibraryDialog = ({
                             <AppIcon name="search" />
                             <input
                                 className="ui-input"
+                                type="search"
                                 placeholder="搜索 className 或标签"
                                 value={keyword}
                                 onChange={(event) => setKeyword(event.target.value)}

@@ -1,8 +1,10 @@
 import { Checkbox, DropdownMenu, MenuItemDivider } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import { useDisplayStore } from "@/store/displayStore";
+import { useTimedTip } from "@/hooks/useTimedTip";
 import { AppIcon } from "@/components/common/AppIcon";
 import { SvgPreview } from "@/components/common/SvgPreview";
+import { TipBubble } from "@/components/common/TipBubble";
 
 /** 卡片数据（项目图标 / 公共库图标 / 收藏项通用） */
 export interface IconCardData {
@@ -73,6 +75,7 @@ export const IconCard = ({
     const padding = previewPadding ?? display.padding;
     const color = previewColor ?? display.color;
     const background = previewBackground ?? display.background;
+    const { tip: cartTip, show: showCartTip } = useTimedTip();
 
     const menuItems: MenuEntry[] = [];
     if (onCopy && code) {
@@ -166,7 +169,10 @@ export const IconCard = ({
                         className={`icon-card__quick-btn ${inCart ? "active-cart" : ""}`}
                         type="button"
                         title={inCart ? "移出采集车" : "加入采集车"}
-                        onClick={onCart}
+                        onClick={() => {
+                            onCart();
+                            showCartTip(inCart ? "已移出采集车" : "已加入采集车");
+                        }}
                     >
                         <AppIcon name="cart" />
                     </button>
@@ -183,6 +189,7 @@ export const IconCard = ({
                     />
                 )}
             </span>
+            <TipBubble text={cartTip} />
             <div
                 className="icon-card__preview"
                 style={{
