@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { DIALOG_SIZE_LARGE, Dialog, Toast } from "minreact-ui";
+import { Dialog, InlineTextEditor, Toast } from "minreact-ui";
 import { api } from "@/api";
 import type { IconItem } from "@/types";
 import { copyText, downloadBlob, downloadSvg } from "@/utils/download";
 import { svgToPngBlob } from "@/utils/image";
-import { applyIconSize, renderIconCode } from "@/utils/svg";
+import { applyIconSize, detectSvgPaint, renderIconCode, setSvgColor, setSvgFillColor, setSvgScale, setSvgStrokeWidth } from "@/utils/svg";
 import { AppIcon } from "@/components/common/AppIcon";
 import { SvgPreview } from "@/components/common/SvgPreview";
+import { TagEditor } from "@/components/common/TagEditor";
+import { SvgCodeDialog } from "@/components/project/SvgCodeDialog";
+
+const DIALOG_WIDTH = "38em";
 
 /** 图标详情：预览、编辑、代码与导出 */
 export const IconDetailDialog = ({
@@ -37,8 +41,13 @@ export const IconDetailDialog = ({
     onDeleted: (iconId: string) => void; // 删除回调
 }) => {
     const [className, setClassName] = useState("");
-    const [tags, setTags] = useState("");
-    const [svg, setSvg] = useState("");
+    const [tags, setTags] = useState<string[]>([]);
+    const [baseSvg, setBaseSvg] = useState("");
+    const [strokeWidth, setStrokeWidth] = useState("");
+    const [color, setColor] = useState("");
+    const [fillColor, setFillColor] = useState("");
+    const [scale, setScale] = useState(100);
+    const [codeOpen, setCodeOpen] = useState(false);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -46,9 +55,45 @@ export const IconDetailDialog = ({
             return;
         }
         setClassName(icon.className);
-        setTags(icon.tags.join(", "));
-        setSvg(icon.svg);
+        setTags(icon.tags);
+        setBaseSvg(icon.svg);
+        setStrokeWidth("");
+        setColor("");
+        setFillColor("");
+        setScale(100);
+        setCodeOpen(false);
     }, [open, icon]);
+
+    const paint = useMemo(() => detectSvgPaint(baseSvg), [baseSvg]);
+
+    // 原始线条粗细（用于粗略滑杆回到原始值）
+    const originalStroke = useMemo(() => {
+        const match = /stroke-width\s*=\s*"([\d.]+)"/i.exec(baseSvg);
+        const value = match ? Number(match[1]) : NaN;
+        return Number.isFinite(value) ? value : 0;
+    }, [baseSvg]);
+
+    // 外观调整基于原始源码派生，避免反复调整时叠加
+    const svg = useMemo(() => {
+        try {
+            let next = baseSvg;
+            if (color) {
+                next = setSvgColor(next, color);
+            }
+            if (fillColor) {
+                next = setSvgFillColor(next, fillColor);
+            }
+            if (strokeWidth) {
+                next = setSvgStrokeWidth(next, Number(strokeWidth));
+            }
+            if (scale !== 100) {
+                next = setSvgScale(next, scale);
+            }
+            return next;
+        } catch {
+            return baseSvg;
+        }
+    }, [baseSvg, color, fillColor, strokeWidth, scale]);
 
     const code = useMemo(() => renderIconCode(template, { className, svg }, size), [template, className, svg, size]);
 
@@ -61,7 +106,7 @@ export const IconDetailDialog = ({
         try {
             const updated = await api.icons.updateIcon(icon.id, {
                 className,
-                tags: tags.split(/[,，\s]+/).filter(Boolean),
+                tags,
                 svg,
             });
             onUpdated(updated);
@@ -90,7 +135,7 @@ export const IconDetailDialog = ({
                     .catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "删除失败"));
                 return false;
             },
-        });
+        }).catch(() => undefined);
     };
 
     const downloadPng = async () => {
@@ -103,46 +148,147 @@ export const IconDetailDialog = ({
     };
 
     return (
-        <Dialog open={open} setOpen={setOpen} width={DIALOG_SIZE_LARGE} clickMaskerToClose>
-            <Dialog.Title>图标详情 · {icon.className}</Dialog.Title>
+        <Dialog open={open} setOpen={setOpen} width={DIALOG_WIDTH} clickMaskerToClose>
+            <Dialog.Title>{icon.className}</Dialog.Title>
             <Dialog.Content>
                 <div className="dialog-body">
                     <div className="detail-head">
                         <div className="detail-preview">
                             <SvgPreview svg={svg} size={64} />
+                            <div className="detail-preview__actions">
+                                {onFavorite && (
+                                    <button
+                                        className={`icon-card__quick-btn ${favorite ? "active-favorite" : ""}`}
+                                        type="button"
+                                        title={favorite ? "取消收藏" : "收藏图标"}
+                                        onClick={onFavorite}
+                                    >
+                                        <AppIcon name="star" />
+                                    </button>
+                                )}
+                                {onCart && (
+                                    <button
+                                        className={`icon-card__quick-btn ${inCart ? "active-cart" : ""}`}
+                                        type="button"
+                                        title={inCart ? "移出采集车" : "加入采集车"}
+                                        onClick={onCart}
+                                    >
+                                        <AppIcon name="cart" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         <div className="detail-meta">
-                            <div className="ui-form">
-                                <div className="ui-field">
-                                    <label>className</label>
-                                    <input className="ui-input" value={className} disabled={!canEdit} onChange={(event) => setClassName(event.target.value)} />
-                                </div>
-                                <div className="ui-field">
-                                    <label>标签（逗号分隔）</label>
-                                    <input className="ui-input" value={tags} disabled={!canEdit} onChange={(event) => setTags(event.target.value)} />
-                                </div>
+                            <div className="detail-field">
+                                <label>类名（css）</label>
+                                <InlineTextEditor
+                                    value={className}
+                                    required
+                                    readonly={!canEdit}
+                                    placeholder="--"
+                                    saveHandler={async (value) => {
+                                        const next = value.trim();
+                                        if (next) {
+                                            setClassName(next);
+                                        }
+                                    }}
+                                />
                             </div>
-                            <div className="detail-badges">
-                                <span className="ui-chip">{icon.libraryId ? `公共库：${icon.libraryId}` : "本地图标"}</span>
-                                <span className="ui-chip">尺寸：{size}px</span>
-                                <span className="ui-chip">更新于 {new Date(icon.updatedAt).toLocaleDateString()}</span>
+                            <div className="detail-field">
+                                <label>标签</label>
+                                <TagEditor value={tags} onChange={setTags} disabled={!canEdit} />
                             </div>
+
+                            {canEdit && (
+                                <div className="detail-appearance">
+                                    {paint.stroked && (
+                                        <div className="detail-appearance__row">
+                                            <label>线条粗细</label>
+                                            <input
+                                                className="display-range"
+                                                type="range"
+                                                min={0.5}
+                                                max={4}
+                                                step={0.25}
+                                                value={strokeWidth || originalStroke || 1.75}
+                                                onChange={(event) => setStrokeWidth(event.target.value)}
+                                            />
+                                            <span className="detail-appearance__value">
+                                                {strokeWidth ? `${strokeWidth}（调整后）` : `原始${originalStroke ? ` ${originalStroke}` : ""}`}
+                                            </span>
+                                            {strokeWidth && (
+                                                <button className="ui-btn button-small button-tonal" type="button" onClick={() => setStrokeWidth("")}>
+                                                    复位
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div className="detail-appearance__row">
+                                        <label>图标颜色</label>
+                                        <input
+                                            className="display-color__input"
+                                            type="color"
+                                            value={color || "#1f1f1f"}
+                                            title={color || "默认跟随文字色"}
+                                            onChange={(event) => setColor(event.target.value)}
+                                        />
+                                        <span className="detail-appearance__value">{color || "currentColor"}</span>
+                                        {color && (
+                                            <button className="ui-btn button-small button-tonal" type="button" onClick={() => setColor("")}>
+                                                默认
+                                            </button>
+                                        )}
+                                    </div>
+                                    {paint.filled && (
+                                        <div className="detail-appearance__row">
+                                            <label>填充颜色</label>
+                                            <input
+                                                className="display-color__input"
+                                                type="color"
+                                                value={fillColor || "#1f1f1f"}
+                                                title={fillColor || "默认跟随文字色"}
+                                                onChange={(event) => setFillColor(event.target.value)}
+                                            />
+                                            <span className="detail-appearance__value">{fillColor || "currentColor"}</span>
+                                            {fillColor && (
+                                                <button className="ui-btn button-small button-tonal" type="button" onClick={() => setFillColor("")}>
+                                                    默认
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div className="detail-appearance__row">
+                                        <label>图标占比</label>
+                                        <input
+                                            className="display-range"
+                                            type="range"
+                                            min={50}
+                                            max={100}
+                                            step={5}
+                                            value={scale}
+                                            onChange={(event) => setScale(Number(event.target.value))}
+                                        />
+                                        <span className="detail-appearance__value">{scale}%</span>
+                                        {scale !== 100 && (
+                                            <button className="ui-btn button-small button-tonal" type="button" onClick={() => setScale(100)}>
+                                                100%
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     <div className="detail-code">
+                        <span className="ui-section-title">使用代码（项目模板）</span>
                         <div className="toolbar">
-                            <button className={`ui-btn small ${favorite ? "primary" : ""}`} type="button" onClick={onFavorite}>
-                                <AppIcon name="star" />
-                                {favorite ? "已收藏" : "收藏"}
-                            </button>
-                            <button className={`ui-btn small ${inCart ? "primary" : ""}`} type="button" onClick={onCart}>
-                                <AppIcon name="cart" />
-                                {inCart ? "已在采集车" : "采集"}
-                            </button>
-                            <div className="spacer" />
-                            <span className="ui-section-title">使用代码（项目模板）</span>
-                            <div className="spacer" />
+                            {canEdit && (
+                                <button className="ui-btn small button-tonal" type="button" onClick={() => setCodeOpen(true)}>
+                                    <AppIcon name="code" />
+                                    编辑 SVG 源码
+                                </button>
+                            )}
                             <button
                                 className="ui-btn small"
                                 type="button"
@@ -178,25 +324,22 @@ export const IconDetailDialog = ({
                                 PNG
                             </button>
                         </div>
-                        <pre className="code-block">{code}</pre>
-                        <p className="ui-note">
-                            iconfont 用法：<code>&lt;i class="iconfont icon-{className}"&gt;&lt;/i&gt;</code>，字体文件可在项目「导出 → iconfont 包」中生成后上传
-                            iconfont.cn。
-                        </p>
-                    </div>
-
-                    <div className="ui-field">
-                        <label>SVG 源码</label>
-                        <textarea
-                            className="ui-textarea"
-                            style={{ minHeight: "9rem" }}
-                            value={svg}
-                            disabled={!canEdit}
-                            onChange={(event) => setSvg(event.target.value)}
-                        />
                     </div>
                 </div>
             </Dialog.Content>
+            <SvgCodeDialog
+                open={codeOpen}
+                setOpen={setCodeOpen}
+                value={baseSvg}
+                onSave={(next) => {
+                    setBaseSvg(next);
+                    // 手动改源码后重置外观调整，避免与派生结果叠加
+                    setStrokeWidth("");
+                    setColor("");
+                    setFillColor("");
+                    setScale(100);
+                }}
+            />
             <Dialog.Action align="right">
                 {canEdit && (
                     <button className="ui-btn danger" type="button" onClick={remove}>

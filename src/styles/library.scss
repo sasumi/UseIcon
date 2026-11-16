@@ -1,6 +1,6 @@
 @use './mixins' as *;
 
-// ---------- 公共库 ----------
+// ---------- 鍏叡搴?----------
 .category-chips {
     display: flex;
     flex-wrap: wrap;
@@ -30,7 +30,7 @@
     }
 }
 
-// 搜索框（图标 + 输入框）
+// 鎼滅储妗嗭紙鍥炬爣 + 杈撳叆妗嗭級
 .ui-search {
     display: flex;
     align-items: center;
@@ -64,14 +64,14 @@
     }
 }
 
-// 工具栏里的搜索框收窄到 8em，把空间留给筛选与操作
+// 宸ュ叿鏍忛噷鐨勬悳绱㈡鏀剁獎鍒?8em锛屾妸绌洪棿鐣欑粰绛涢€変笌鎿嶄綔
 .content-toolbar .ui-search {
-    flex: 0 0 8em;
-    min-width: 8em;
-    max-width: 8em;
+    flex: 0 0 12em;
+    min-width: 12em;
+    max-width: 12em;
 }
 
-// ---------- 公共库显示设置面板 ----------
+// ---------- 鍏叡搴撴樉绀鸿缃潰鏉?----------
 .minreactui-popover-content.display-popover {
     width: 15rem;
     max-width: min(15rem, calc(100vw - 2rem));
@@ -151,10 +151,4 @@
         background: var(--color-background);
         cursor: pointer;
     }
-}
-
-// ---------- 收藏 ----------
-// 收藏标签筛选：放在图标列表上方（详情区）
-.favorites-tags {
-    margin: 0.1rem 0 0.7rem;
 }

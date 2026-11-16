@@ -36,6 +36,19 @@
     }
 }
 
+// 下拉箭头（三角形），用于 select-like / 下拉菜单触发器
+@mixin caret-down {
+    content: "";
+    flex: none;
+    margin-left: auto;
+    width: 0;
+    height: 0;
+    border-left: 0.3em solid transparent;
+    border-right: 0.3em solid transparent;
+    border-top: 0.32em solid currentColor;
+    opacity: 0.55;
+}
+
 // 通用按钮基底（对齐 pathbooker 的 form-button）
 @mixin button-base {
     display: inline-flex;

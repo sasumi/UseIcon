@@ -3,9 +3,6 @@ import type { ThemeMode } from "./types";
 /** 应用名 */
 export const APP_NAME = "UseIcon";
 
-/** localStorage 数据库键（后期切 PHP 后台时替换 api 层即可） */
-export const DB_STORAGE_KEY = "useicon:db:v1";
-
 /** 登录令牌存放键 */
 export const TOKEN_STORAGE_KEY = "useicon:token";
 
@@ -35,8 +32,8 @@ export const EXTMODE_CODE_HEIGHT_KEY = "useicon:extmode-code-height";
 /** 项目图标排序偏好键前缀（按项目记忆） */
 export const PROJECT_SORT_STORAGE_PREFIX = "useicon:project-sort:";
 
-/** 模拟网络延迟（毫秒） */
-export const MOCK_DELAY = 160;
+/** 收藏页图标排序偏好键 */
+export const FAVORITES_SORT_STORAGE_KEY = "useicon:favorites-sort";
 
 /** 默认图标尺寸 */
 export const DEFAULT_ICON_SIZE = 24;

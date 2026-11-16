@@ -250,6 +250,131 @@ export const optimizeSvg = (source: string, options: IconOptimizeOptions = {}): 
     return compactMarkup(serialize(svg));
 };
 
+/** 设置线条粗细：根节点下发，后代同名属性移除，保证整体一致 */
+export const setSvgStrokeWidth = (source: string, width: number): string => {
+    const svg = parseSvg(source);
+    if (!svg) {
+        throw new Error("SVG 解析失败，请检查源码");
+    }
+    applyStrokeWidth(svg, width);
+    return compactMarkup(serialize(svg));
+};
+
+/** 设置图标颜色：固定色替换为目标色，根节点写 color 以驱动 currentColor；传空表示恢复 currentColor */
+export const setSvgColor = (source: string, color: string): string => {
+    const svg = parseSvg(source);
+    if (!svg) {
+        throw new Error("SVG 解析失败，请检查源码");
+    }
+    const target = color || "currentColor";
+    const elements = [svg, ...Array.from(svg.querySelectorAll("*"))];
+    elements.forEach((element) => {
+        COLOR_PROPS.forEach((prop) => {
+            const value = element.getAttribute(prop);
+            if (value && (isFixedColor(value) || (color && value.trim().toLowerCase() === "currentcolor"))) {
+                element.setAttribute(prop, target);
+            }
+        });
+        const style = element.getAttribute("style");
+        if (style) {
+            element.setAttribute(
+                "style",
+                style
+                    .split(";")
+                    .map((segment) => {
+                        const [rawKey, rawValue] = segment.split(":");
+                        const key = (rawKey || "").trim().toLowerCase();
+                        if (COLOR_PROPS.includes(key) && rawValue && isFixedColor(rawValue)) {
+                            return `${rawKey.trim()}:${target}`;
+                        }
+                        return segment;
+                    })
+                    .join(";"),
+            );
+        }
+    });
+    if (color) {
+        svg.setAttribute("color", color);
+    } else {
+        svg.removeAttribute("color");
+    }
+    return compactMarkup(serialize(svg));
+};
+
+/** 设置图标内容占比：100 为原始大小，数值越小图形越小、留白越多 */
+export const setSvgScale = (source: string, percent: number): string => {
+    const svg = parseSvg(source);
+    if (!svg) {
+        throw new Error("SVG 解析失败，请检查源码");
+    }
+    const viewBox = readViewBox(svg);
+    const ratio = 100 / Math.min(100, Math.max(10, percent));
+    const width = viewBox.width * ratio;
+    const height = viewBox.height * ratio;
+    const x = viewBox.x - (width - viewBox.width) / 2;
+    const y = viewBox.y - (height - viewBox.height) / 2;
+    svg.setAttribute("viewBox", `${roundNumber(x, 3)} ${roundNumber(y, 3)} ${roundNumber(width, 3)} ${roundNumber(height, 3)}`);
+    svg.removeAttribute("width");
+    svg.removeAttribute("height");
+    return compactMarkup(serialize(svg));
+};
+
+/** 识别 SVG 的绘制方式：是否有填充图形（闭合路径等）、是否有描边 */
+export const detectSvgPaint = (source: string): { filled: boolean; stroked: boolean; closed: boolean } => {
+    const svg = parseSvg(source);
+    if (!svg) {
+        return { filled: false, stroked: false, closed: false };
+    }
+    const isNone = (value: string | null): boolean => typeof value === "string" && value.trim().toLowerCase() === "none";
+    const rootFillNone = isNone(svg.getAttribute("fill"));
+    const rootStroke = svg.getAttribute("stroke");
+    const nodes = Array.from(svg.querySelectorAll("path,rect,circle,ellipse,polygon,polyline,line,text,use"));
+    let filled = false;
+    let stroked = false;
+    let closed = false;
+    nodes.forEach((node) => {
+        const element = node as SVGElement;
+        const fillRaw = element.getAttribute("fill");
+        // fill 未显式设置时继承根节点，根节点也未设置则为默认黑色填充
+        if (!(fillRaw === null ? rootFillNone : isNone(fillRaw))) {
+            filled = true;
+        }
+        const strokeRaw = element.getAttribute("stroke") ?? rootStroke;
+        if (strokeRaw && !isNone(strokeRaw)) {
+            stroked = true;
+        }
+        if (/[zZ]/.test(element.getAttribute("d") || "")) {
+            closed = true;
+        }
+    });
+    return { filled, stroked, closed };
+};
+
+/** 设置填充颜色：仅改有填充的图形（fill="none" 的线性元素保持透明） */
+export const setSvgFillColor = (source: string, color: string): string => {
+    const svg = parseSvg(source);
+    if (!svg) {
+        throw new Error("SVG 解析失败，请检查源码");
+    }
+    const target = color || "currentColor";
+    const isNone = (value: string | null): boolean => typeof value === "string" && value.trim().toLowerCase() === "none";
+    const rootFillNone = isNone(svg.getAttribute("fill"));
+    svg.querySelectorAll("path,rect,circle,ellipse,polygon,polyline,text,use").forEach((node) => {
+        const element = node as SVGElement;
+        const fillRaw = element.getAttribute("fill");
+        if (fillRaw === null) {
+            if (!rootFillNone) {
+                element.setAttribute("fill", target);
+            }
+            return;
+        }
+        if (!isNone(fillRaw)) {
+            element.setAttribute("fill", target);
+        }
+    });
+    return compactMarkup(serialize(svg));
+};
+
 /** 设置渲染尺寸（保留 viewBox，仅补 width/height 属性） */
 export const applyIconSize = (source: string, size: number): string => {
     const svg = parseSvg(source);

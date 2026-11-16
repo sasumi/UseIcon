@@ -24,11 +24,11 @@ export const ExportMenu = ({
     trigger?: ReactNode; // 自定义触发器
 }) => {
     const items: MenuEntry[] = [
-        { value: "svg", label: `SVG 列表（${icons.length} 个图标 · zip）`, icon: <AppIcon name="download" /> },
-        { value: "sprite", label: "SVG Sprite（sprite.svg）", icon: <AppIcon name="code" /> },
-        { value: "png", label: `PNG 图片（${size}px / ${size * 2}px · zip）`, icon: <AppIcon name="image" /> },
+        { value: "svg", label: "SVG 列表", icon: <AppIcon name="download" /> },
+        { value: "sprite", label: "SVG Sprite", icon: <AppIcon name="code" /> },
+        { value: "png", label: "PNG 图片", icon: <AppIcon name="image" /> },
         MenuItemDivider,
-        { value: "iconfont", label: "iconfont 字体包（zip）", icon: <AppIcon name="tag" /> },
+        { value: "iconfont", label: "iconfont 字体包", icon: <AppIcon name="tag" /> },
         { value: "json", label: "JSON 数据", icon: <AppIcon name="file-code" /> },
     ];
 

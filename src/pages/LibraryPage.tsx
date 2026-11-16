@@ -27,7 +27,6 @@ export const LibraryPage = () => {
     const toggleCart = useCartStore((state) => state.toggle);
     const [keyword, setKeyword] = useState("");
     const [category, setCategory] = useState("");
-    const [onlyFavorite, setOnlyFavorite] = useState(false);
     const [detail, setDetail] = useState<LibraryIcon | null>(null);
 
     useEffect(() => {
@@ -44,15 +43,12 @@ export const LibraryPage = () => {
             if (category && icon.category !== category) {
                 return false;
             }
-            if (onlyFavorite && !favorites.some((item) => item.libraryId === icon.id)) {
-                return false;
-            }
             if (!query) {
                 return true;
             }
             return icon.className.toLowerCase().includes(query) || icon.tags.some((tag) => tag.toLowerCase().includes(query));
         });
-    }, [icons, category, keyword, onlyFavorite, favorites]);
+    }, [icons, category, keyword]);
 
     const countByCategory = useMemo(() => {
         const map: Record<string, number> = {};
@@ -94,34 +90,13 @@ export const LibraryPage = () => {
                 </div>
                 <div className="side-panel__body">
                     <div className="nav-list">
-                        <div
-                            className={`nav-item ${category === "" && !onlyFavorite ? "active" : ""}`}
-                            onClick={() => {
-                                setCategory("");
-                                setOnlyFavorite(false);
-                            }}
-                        >
+                        <div className={`nav-item ${category === "" ? "active" : ""}`} onClick={() => setCategory("")}>
                             <AppIcon name="grid" />
-                            全部图标
+                            全部
                             <span className="nav-item__count">{icons.length}</span>
                         </div>
-                        <div className={`nav-item ${onlyFavorite ? "active" : ""}`} onClick={() => setOnlyFavorite(true)}>
-                            <AppIcon name="star" />
-                            已收藏的
-                            <span className="nav-item__count">{favorites.length}</span>
-                        </div>
-                    </div>
-                    <div className="ui-divider" />
-                    <div className="nav-list">
                         {LIBRARY_CATEGORIES.map((item) => (
-                            <div
-                                key={item}
-                                className={`nav-item ${category === item && !onlyFavorite ? "active" : ""}`}
-                                onClick={() => {
-                                    setCategory(item);
-                                    setOnlyFavorite(false);
-                                }}
-                            >
+                            <div key={item} className={`nav-item ${category === item ? "active" : ""}`} onClick={() => setCategory(item)}>
                                 <AppIcon name="tag" />
                                 {item}
                                 <span className="nav-item__count">{countByCategory[item] || 0}</span>

@@ -57,6 +57,30 @@
     }
 }
 
+// 确认 / 提示类对话框：标题、正文、按钮区留白更宽松
+.minreactui-dialog-confirm,
+.minreactui-dialog-alert,
+.minreactui-dialog-prompt {
+    --minreactui-dialog-inner-padding: 1.3em;
+
+    .minreactui-dialog-title {
+        padding-top: 1.5em;
+    }
+
+    .minreactui-dialog-content {
+        padding: 0.85em var(--minreactui-dialog-inner-padding);
+        line-height: 1.6;
+    }
+
+    .minreactui-dialog-content ~ .minreactui-dialog-actions {
+        margin-top: 0;
+    }
+
+    .minreactui-dialog-actions {
+        padding: 0.55em var(--minreactui-dialog-inner-padding) 1.2em;
+    }
+}
+
 .minreactui-dropdown-menu {
     min-width: 9em;
 }

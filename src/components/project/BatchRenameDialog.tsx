@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DIALOG_SIZE_SMALL, Dialog, Toast } from "minreact-ui";
 import { api } from "@/api";
+import { useDialogForm } from "@/hooks/useDialogForm";
 import type { IconItem } from "@/types";
 
 /** 批量重命名图标 */
@@ -48,36 +49,40 @@ export const BatchRenameDialog = ({
         }
     };
 
+    const { formProps, submitProps } = useDialogForm(() => void submit());
+
     return (
         <Dialog open={open} setOpen={setOpen} width={DIALOG_SIZE_SMALL} clickMaskerToClose>
             <Dialog.Title>批量重命名（{iconIds.length} 个图标）</Dialog.Title>
             <Dialog.Content>
-                <div className="dialog-body">
-                    <div className="ui-form">
-                        <div className="ui-field">
-                            <label>添加前缀</label>
-                            <input className="ui-input" placeholder="例如 project-" value={prefix} onChange={(event) => setPrefix(event.target.value)} />
-                        </div>
-                        <div className="ui-field">
-                            <label>添加后缀</label>
-                            <input className="ui-input" placeholder="例如 -outline" value={suffix} onChange={(event) => setSuffix(event.target.value)} />
-                        </div>
-                        <div className="ui-field">
-                            <label>查找替换</label>
-                            <div className="ui-row">
-                                <input className="ui-input" placeholder="查找" value={find} onChange={(event) => setFind(event.target.value)} />
-                                <input className="ui-input" placeholder="替换为" value={replace} onChange={(event) => setReplace(event.target.value)} />
+                <form {...formProps}>
+                    <div className="dialog-body">
+                        <div className="ui-form">
+                            <div className="ui-field">
+                                <label>添加前缀</label>
+                                <input className="ui-input" placeholder="例如 project-" value={prefix} onChange={(event) => setPrefix(event.target.value)} />
                             </div>
+                            <div className="ui-field">
+                                <label>添加后缀</label>
+                                <input className="ui-input" placeholder="例如 -outline" value={suffix} onChange={(event) => setSuffix(event.target.value)} />
+                            </div>
+                            <div className="ui-field">
+                                <label>查找替换</label>
+                                <div className="ui-row">
+                                    <input className="ui-input" placeholder="查找" value={find} onChange={(event) => setFind(event.target.value)} />
+                                    <input className="ui-input" placeholder="替换为" value={replace} onChange={(event) => setReplace(event.target.value)} />
+                                </div>
+                            </div>
+                            <p className="ui-note">重名时会自动追加序号，例如 icon-2。</p>
                         </div>
-                        <p className="ui-note">重名时会自动追加序号，例如 icon-2。</p>
                     </div>
-                </div>
+                </form>
             </Dialog.Content>
             <Dialog.Action align="right">
                 <button className="ui-btn" type="button" onClick={() => setOpen(false)}>
                     取消
                 </button>
-                <button className="ui-btn primary" type="button" disabled={saving} onClick={() => void submit()}>
+                <button className="ui-btn primary" {...submitProps} disabled={saving}>
                     {saving ? "处理中..." : "重命名"}
                 </button>
             </Dialog.Action>

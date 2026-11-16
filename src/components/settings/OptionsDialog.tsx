@@ -79,7 +79,7 @@ export const OptionsDialog = ({ open, setOpen }: { open: boolean; setOpen: (open
                 </div>
                 <div className="options-row">
                     <label>数据存储</label>
-                    <span className="ui-note">项目与图标暂存本机浏览器，登录后用户信息来自 api.tthaoke.com</span>
+                    <span className="ui-note">项目、图标与收藏保存在 uiapi.tthaoke.com，账号信息来自 api.tthaoke.com</span>
                 </div>
             </section>
         </div>

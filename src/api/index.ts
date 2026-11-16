@@ -6,7 +6,7 @@ import * as projects from "./projects";
 /**
  * 统一 API 出口：
  * - auth：api.tthaoke.com 的真实用户体系（登录 / 注册 / 头像 / 昵称）
- * - projects / icons / favorites：本地 LocalStorage 实现，后续替换为 PHP 业务接口
+ * - projects / icons / favorites：uiapi.tthaoke.com 的业务接口（项目 / 图标 / 收藏）
  */
 export const api = {
     auth,
@@ -15,5 +15,4 @@ export const api = {
     favorites,
 };
 
-export { ApiError } from "./base";
-export { resetDatabase, subscribeDatabase } from "./db";
+export { ApiError } from "./http";

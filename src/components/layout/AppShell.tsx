@@ -36,7 +36,7 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
 
     const userMenu: MenuEntry[] = user
         ? [
-              { value: "profile", label: `${user.nickname || user.name} · 个人资料`, icon: <UserAvatar user={user} size={1.2} /> },
+              { value: "profile", label: "个人资料", icon: <UserAvatar user={user} size={1.2} /> },
               MenuItemDivider,
               { value: "options", label: "选项", icon: <AppIcon name="settings" /> },
               MenuItemDivider,
@@ -73,13 +73,7 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
     return (
         <div className="app-shell">
             <aside className="activity-bar">
-                <Clickable
-                    tag="span"
-                    role="button"
-                    className={`activity-logo ${activeKey === "library" ? "is-home" : ""}`}
-                    title={`UseIcon v${APP_VERSION}`}
-                    onClick={() => navigate("/library")}
-                >
+                <Clickable tag="span" role="button" className="activity-logo" title={`UseIcon v${APP_VERSION}`} onClick={() => navigate("/library")}>
                     UI
                 </Clickable>
                 {NAV_ITEMS.map((item) => (
@@ -97,15 +91,18 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
                     </span>
                 ))}
                 <div className="spacer" />
-                <span className="activity-item" title="选项" role="button" tabIndex={0} onClick={() => setOptionsOpen(true)}>
-                    <AppIcon name="settings" />
-                </span>
                 <DropdownMenu
                     items={userMenu}
                     onChange={handleUserMenu}
                     trigger={
                         <span className="activity-user" title={user ? `${user.nickname || user.name}（${user.name}）` : "未登录，点击登录"}>
-                            {user ? <UserAvatar user={user} size={1.9} /> : <span className="activity-user-guest"><AppIcon name="user" /></span>}
+                            {user ? (
+                                <UserAvatar user={user} size={1.9} />
+                            ) : (
+                                <span className="activity-user-guest">
+                                    <AppIcon name="user" />
+                                </span>
+                            )}
                         </span>
                     }
                 />

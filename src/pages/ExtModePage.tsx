@@ -1,56 +1,104 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, DropdownMenu, MenuItemDivider, Toast } from "minreact-ui";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Dialog, DropdownMenu, MenuItemDivider, Select, Toast } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
-import { CODE_TEMPLATE_PRESETS, DEFAULT_CODE_TEMPLATE, EXTMODE_CODE_HEIGHT_KEY } from "@/config";
-import { navigate, projectPath } from "@/router/useRoute";
+import { CODE_TEMPLATE_PRESETS, DEFAULT_CODE_TEMPLATE, EXTMODE_CODE_HEIGHT_KEY, PROJECT_SORT_STORAGE_PREFIX } from "@/config";
+import { navigate, extModePath, projectPath } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
 import { useCodeTypeStore } from "@/store/codeTypeStore";
 import type { CodeType } from "@/store/codeTypeStore";
+import { useDisplayStore } from "@/store/displayStore";
 import { useProjectStore } from "@/store/projectStore";
-import type { IconItem } from "@/types";
+import type { IconItem, Project } from "@/types";
 import { copyText } from "@/utils/download";
 import { getProjectAccess } from "@/utils/permission";
 import { renderIconCode } from "@/utils/svg";
 import { usePanelHeight } from "@/hooks/usePanelHeight";
+import { DisplayControl } from "@/components/library/DisplayPanel";
 import { AppIcon } from "@/components/common/AppIcon";
 import { EmptyState } from "@/components/common/EmptyState";
 import { SvgPreview } from "@/components/common/SvgPreview";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { CodeTypeDialog } from "@/components/extmode/CodeTypeDialog";
+import { ProjectPicker } from "@/components/project/ProjectPicker";
 
 const PROJECT_TEMPLATE_VALUE = "__project__";
 const NEW_TYPE_VALUE = "__new_type__";
 
+const CODE_PANEL_HEIGHT = {
+    storageKey: EXTMODE_CODE_HEIGHT_KEY,
+    defaultHeight: 190,
+    min: 110,
+    max: 420,
+};
+
+type SortMode = "default" | "name-asc" | "name-desc" | "custom";
+
+const SORT_ITEMS: MenuEntry[] = [
+    { value: "default", label: "默认顺序", icon: <AppIcon name="layers" /> },
+    { value: "name-asc", label: "名称 A → Z", icon: <AppIcon name="arrow-down" /> },
+    { value: "name-desc", label: "名称 Z → A", icon: <AppIcon name="arrow-up" /> },
+    { value: "custom", label: "自定义排序", icon: <AppIcon name="more-vertical" /> },
+];
+
+const SORT_LABELS: Record<SortMode, string> = {
+    default: "默认顺序",
+    "name-asc": "名称 A → Z",
+    "name-desc": "名称 Z → A",
+    custom: "自定义排序",
+};
+
+/** 与项目列表共用同一份排序偏好 */
+const readSortMode = (projectId: string): SortMode => {
+    try {
+        const saved = localStorage.getItem(`${PROJECT_SORT_STORAGE_PREFIX}${projectId}`);
+        return saved && saved in SORT_LABELS ? (saved as SortMode) : "default";
+    } catch {
+        return "default";
+    }
+};
+
 /**
- * ExtMode：竖屏小窗模式，拖动 / 点击图标按「当前代码类型」生成代码。
+ * 拓展模式：竖屏小窗页面，拖动 / 点击图标按「当前代码类型」生成代码。
  * 代码类型可以是项目模板、内置预设，或用户自己新增的类型。
  */
 export const ExtModePage = ({ projectId }: { projectId: string }) => {
     const user = useAuthStore((state) => state.user);
     const project = useProjectStore((state) => state.current);
+    const projects = useProjectStore((state) => state.projects);
     const icons = useProjectStore((state) => state.icons);
     const loading = useProjectStore((state) => state.detailLoading);
     const error = useProjectStore((state) => state.detailError);
     const loadProject = useProjectStore((state) => state.loadProject);
+    const loadProjects = useProjectStore((state) => state.loadProjects);
 
     const [keyword, setKeyword] = useState("");
+    const [tag, setTag] = useState("");
+    const [sortMode, setSortMode] = useState<SortMode>("default");
     const [templateValue, setTemplateValue] = useState(PROJECT_TEMPLATE_VALUE);
     const [code, setCode] = useState("");
     const [codeTypeDialogOpen, setCodeTypeDialogOpen] = useState(false);
     const [editingType, setEditingType] = useState<CodeType | null>(null);
     const codeTypes = useCodeTypeStore((state) => state.types);
     const removeType = useCodeTypeStore((state) => state.removeType);
-    const codeRef = useRef<HTMLTextAreaElement>(null);
-    const { height: codeHeight, panelRef: codePanelRef, resizerProps: codeResizerProps } = usePanelHeight({
-        storageKey: EXTMODE_CODE_HEIGHT_KEY,
-        defaultHeight: 190,
-        min: 110,
-        max: 420,
-    });
+    const display = useDisplayStore((state) => state.display);
+    const { height: codeHeight, panelRef: codePanelRef, resizerProps: codeResizerProps } = usePanelHeight(CODE_PANEL_HEIGHT);
 
     useEffect(() => {
         void loadProject(projectId);
     }, [projectId, loadProject]);
+
+    // 下拉切换项目需要完整项目列表
+    useEffect(() => {
+        void loadProjects();
+    }, [loadProjects]);
+
+    // 切换项目时重置筛选与代码，并恢复该项目的排序偏好
+    useEffect(() => {
+        setKeyword("");
+        setTag("");
+        setCode("");
+        setSortMode(readSortMode(projectId));
+    }, [projectId]);
 
     const access = useMemo(() => getProjectAccess(project, user), [project, user]);
 
@@ -147,34 +195,58 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
     };
 
     const size = project?.iconSize || 24;
+    const previewSize = display.size + display.padding * 2;
+
+    const switchProject = (next: Project) => {
+        if (next.id === project?.id) {
+            return;
+        }
+        navigate(extModePath(next.id));
+    };
+
+    const tags = useMemo(() => {
+        const set = new Set<string>();
+        icons.forEach((icon) => icon.tags.forEach((item) => set.add(item)));
+        return Array.from(set).slice(0, 24);
+    }, [icons]);
 
     const filtered = useMemo(() => {
         const query = keyword.trim().toLowerCase();
-        if (!query) {
-            return icons;
+        const matched = icons.filter((icon) => {
+            if (tag && !icon.tags.includes(tag)) {
+                return false;
+            }
+            if (!query) {
+                return true;
+            }
+            return icon.className.toLowerCase().includes(query) || icon.tags.some((item) => item.toLowerCase().includes(query));
+        });
+        if (sortMode === "name-asc") {
+            return [...matched].sort((a, b) => a.className.localeCompare(b.className, "zh"));
         }
-        return icons.filter(
-            (icon) => icon.className.toLowerCase().includes(query) || icon.tags.some((item) => item.toLowerCase().includes(query)),
-        );
-    }, [icons, keyword]);
+        if (sortMode === "name-desc") {
+            return [...matched].sort((a, b) => b.className.localeCompare(a.className, "zh"));
+        }
+        return matched;
+    }, [icons, keyword, tag, sortMode]);
+
+    const changeSort = (value: unknown) => {
+        if (typeof value !== "string" || !(value in SORT_LABELS)) {
+            return;
+        }
+        const next = value as SortMode;
+        setSortMode(next);
+        try {
+            localStorage.setItem(`${PROJECT_SORT_STORAGE_PREFIX}${projectId}`, next);
+        } catch {
+            // 忽略存储异常
+        }
+    };
 
     const codeFor = (icon: IconItem): string => renderIconCode(template, icon, size);
 
     const insert = (text: string) => {
-        const element = codeRef.current;
-        if (!element) {
-            setCode((prev) => `${prev}${text}`);
-            return;
-        }
-        const start = element.selectionStart ?? code.length;
-        const end = element.selectionEnd ?? code.length;
-        const next = `${code.slice(0, start)}${text}${code.slice(end)}`;
-        setCode(next);
-        requestAnimationFrame(() => {
-            element.focus();
-            const position = start + text.length;
-            element.setSelectionRange(position, position);
-        });
+        setCode((prev) => `${prev}${text}`);
     };
 
     if (error) {
@@ -185,8 +257,13 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
         );
     }
 
-    if (!project) {
-        return <div className="extmode-app">{loading ? <div className="ui-loading">加载中...</div> : <EmptyState text="项目不存在" />}</div>;
+    if (!project || project.id !== projectId) {
+        // 切换项目时详情尚未返回，先按加载中处理，避免短暂显示上一个项目
+        return (
+            <div className="extmode-app">
+                {loading || project ? <div className="ui-loading">加载中...</div> : <EmptyState text="项目不存在" />}
+            </div>
+        );
     }
 
     if (!access.canView) {
@@ -204,7 +281,17 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
                 <span className="extmode-title ellipsis" title={project.name}>
                     {project.name}
                 </span>
-                <span className="ui-chip">ExtMode</span>
+                {projects.length > 1 && (
+                    <ProjectPicker
+                        currentId={project.id}
+                        onSelect={switchProject}
+                        trigger={
+                            <button className="ui-icon-btn small extmode-project-switch" type="button" title="切换项目">
+                                <AppIcon name="chevron-down" />
+                            </button>
+                        }
+                    />
+                )}
                 <div className="spacer" />
                 <ThemeToggle />
                 <button className="ui-icon-btn" type="button" title="在完整页面打开" onClick={() => navigate(projectPath(project.id))}>
@@ -217,13 +304,43 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
                     <AppIcon name="search" />
                     <input className="ui-input" placeholder="搜索图标" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
                 </div>
+                <DropdownMenu
+                    items={SORT_ITEMS}
+                    value={sortMode}
+                    onChange={changeSort}
+                    trigger={
+                        <button
+                            type="button"
+                            className={`ui-btn small button-tonal select-like extmode-sort ${sortMode !== "default" ? "has-value" : ""}`}
+                            title="排序方式"
+                        >
+                            {SORT_LABELS[sortMode]}
+                        </button>
+                    }
+                />
+                {tags.length > 0 && (
+                    <Select
+                        key={`${project.id}:${tag}`}
+                        items={[
+                            { value: "", label: "全部标签", icon: <AppIcon name="layers" /> },
+                            ...tags.map((item) => ({ value: item, label: item, icon: <AppIcon name="tag" /> })),
+                        ]}
+                        value={tag}
+                        placeholder="标签"
+                        onChange={(value) => setTag(typeof value === "string" ? value : "")}
+                        triggerClassName={`ui-btn small button-tonal extmode-tag ${tag ? "has-value" : ""}`}
+                    />
+                )}
+                <DisplayControl />
             </div>
 
             <div className="extmode-grid-wrap">
-                {filtered.length === 0 ? (
+                {icons.length === 0 ? (
+                    <EmptyState text="项目里还没有图标" />
+                ) : filtered.length === 0 ? (
                     <EmptyState text="没有匹配的图标" icon="search" />
                 ) : (
-                    <ul className="extmode-grid">
+                    <ul className="extmode-grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${Math.max(74, previewSize + 20)}px, 1fr))` }}>
                         {filtered.map((icon) => (
                             <li
                                 key={icon.id}
@@ -240,7 +357,18 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
                                     insert(codeFor(icon));
                                 }}
                             >
-                                <SvgPreview svg={icon.svg} size={Math.min(Math.max(size, 20), 32)} />
+                                <span
+                                    className="extmode-icon__preview"
+                                    style={{
+                                        width: previewSize,
+                                        height: previewSize,
+                                        padding: display.padding,
+                                        background: display.background || undefined,
+                                        color: display.color || undefined,
+                                    }}
+                                >
+                                    <SvgPreview svg={icon.svg} size={display.size} />
+                                </span>
                                 <span className="extmode-icon__name">{icon.className}</span>
                             </li>
                         ))}
@@ -249,7 +377,7 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
             </div>
 
             <div {...codeResizerProps} />
-            <div className="extmode-code" ref={codePanelRef} style={code && codeHeight ? { height: codeHeight } : undefined}>
+            <div className="extmode-code" ref={codePanelRef} style={code ? { height: codeHeight ?? CODE_PANEL_HEIGHT.defaultHeight } : undefined}>
                 <div className="extmode-code__head">
                     <DropdownMenu
                         key={templateValue}
@@ -263,6 +391,11 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
                         }
                     />
                     <div className="spacer" />
+                    {code && (
+                        <button className="ui-icon-btn small" type="button" title="清空代码" onClick={() => setCode("")}>
+                            <AppIcon name="trash" />
+                        </button>
+                    )}
                     <button
                         className="ui-icon-btn small"
                         type="button"
@@ -280,11 +413,11 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
                 </div>
                 {code ? (
                     <textarea
-                        ref={codeRef}
                         className="extmode-editor"
+                        readOnly
                         spellCheck={false}
                         value={code}
-                        onChange={(event) => setCode(event.target.value)}
+                        title="只读预览：点击或拖动图标即可插入代码"
                         onDragOver={(event) => {
                             event.preventDefault();
                             event.dataTransfer.dropEffect = "copy";

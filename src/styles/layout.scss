@@ -28,8 +28,8 @@
     height: 2rem;
     margin-bottom: 0.4rem;
     border-radius: 6px;
-    background: transparent;
-    color: var(--color-secondary);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
     font-weight: 700;
     font-size: 0.9rem;
     user-select: none;
@@ -37,8 +37,7 @@
         background 0.15s ease,
         color 0.15s ease;
 
-    // 仅首页（公共库）显示品牌底色，其余页面只用文字，避免与高亮入口抢视线
-    &.is-home {
+    &:hover {
         background: var(--color-accent);
         color: var(--color-on-accent);
     }

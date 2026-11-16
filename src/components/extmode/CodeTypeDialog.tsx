@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DIALOG_SIZE_NORMAL, Dialog, Toast } from "minreact-ui";
 import { DEFAULT_CODE_TEMPLATE } from "@/config";
+import { useDialogForm } from "@/hooks/useDialogForm";
 import { useCodeTypeStore } from "@/store/codeTypeStore";
 import type { CodeType } from "@/store/codeTypeStore";
 
@@ -55,42 +56,45 @@ export const CodeTypeDialog = ({
         setOpen(false);
     };
 
+    const { formProps, submitProps } = useDialogForm(submit);
+
     return (
         <Dialog open={open} setOpen={setOpen} width={DIALOG_SIZE_NORMAL} clickMaskerToClose>
             <Dialog.Title>{editing ? "修改代码模板" : "新增代码模板"}</Dialog.Title>
             <Dialog.Content>
-                <div className="dialog-body">
-                    <div className="ui-field">
-                        <label htmlFor="code-type-name">模板名称</label>
-                        <input
-                            id="code-type-name"
-                            className="ui-input"
-                            placeholder="例如：小程序组件"
-                            value={name}
-                            onChange={(event) => setName(event.target.value)}
-                            onKeyDown={(event) => event.key === "Enter" && submit()}
-                        />
-                        <span className="ui-field-tip">名称会显示在 ExtMode 的代码模板下拉里</span>
+                <form {...formProps}>
+                    <div className="dialog-body">
+                        <div className="ui-field">
+                            <label htmlFor="code-type-name">模板名称</label>
+                            <input
+                                id="code-type-name"
+                                className="ui-input"
+                                placeholder="例如：小程序组件"
+                                value={name}
+                                onChange={(event) => setName(event.target.value)}
+                            />
+                            <span className="ui-field-tip">名称会显示在拓展模式的代码模板下拉里</span>
+                        </div>
+                        <div className="ui-field">
+                            <label htmlFor="code-type-template">代码模板</label>
+                            <textarea
+                                id="code-type-template"
+                                className="ui-textarea code"
+                                style={{ minHeight: "7rem" }}
+                                spellCheck={false}
+                                value={template}
+                                onChange={(event) => setTemplate(event.target.value)}
+                            />
+                            <span className="ui-field-tip">支持 %icon_name% / %size% / %color% / %svg% 等占位符</span>
+                        </div>
                     </div>
-                    <div className="ui-field">
-                        <label htmlFor="code-type-template">代码模板</label>
-                        <textarea
-                            id="code-type-template"
-                            className="ui-textarea"
-                            style={{ minHeight: "7rem" }}
-                            spellCheck={false}
-                            value={template}
-                            onChange={(event) => setTemplate(event.target.value)}
-                        />
-                        <span className="ui-field-tip">支持 %icon_name% / %size% / %color% / %svg% 等占位符</span>
-                    </div>
-                </div>
+                </form>
             </Dialog.Content>
             <Dialog.Action align="right">
                 <button className="ui-btn" type="button" onClick={() => setOpen(false)}>
                     取消
                 </button>
-                <button className="ui-btn primary" type="button" onClick={submit}>
+                <button className="ui-btn primary" {...submitProps}>
                     {editing ? "保存" : "创建"}
                 </button>
             </Dialog.Action>

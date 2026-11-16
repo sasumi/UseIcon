@@ -1,7 +1,6 @@
 import { LOGIN_USER_STORAGE_KEY } from "@/config";
 import { dispatchEvent } from "minutool";
 import type { User } from "@/types";
-import { mutateDatabase } from "./db";
 import { ApiError, apiGetJSON, apiPostJSON, apiRequestJSON, getToken, setToken } from "./http";
 
 export const EVENT_ACCOUNT_UPDATED = "useicon:account-updated";
@@ -44,17 +43,6 @@ const cacheLoginUser = (user: User | null): void => {
     }
 };
 
-/** 记住用户快照：项目成员展示与按邮箱查找依赖它 */
-const rememberUserSnapshot = (user: User): void => {
-    try {
-        mutateDatabase((db) => {
-            db.userSnapshots[user.id] = user;
-        });
-    } catch (error) {
-        console.warn("写入用户快照失败", error);
-    }
-};
-
 /** 当前登录用户 ID */
 export const getLoginUserId = (): string | null => getLoginUser()?.id || null;
 
@@ -69,7 +57,6 @@ export const applyLoginResult = (payload: { token?: string; user?: any }): User 
     const user = normalizeUser(payload?.user ?? payload);
     if (user.id) {
         cacheLoginUser(user);
-        rememberUserSnapshot(user);
         dispatchEvent(EVENT_ACCOUNT_UPDATED);
     }
     return user;

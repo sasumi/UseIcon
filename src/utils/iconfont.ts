@@ -23,7 +23,7 @@ const buildCandidate = (name: string, viewBox: string, inner: string, key: strin
     className: sanitizeIconName(name),
     svg: `<svg xmlns="${SVG_NS}" viewBox="${viewBox}">${inner}</svg>`,
     tags: [],
-    checked: true,
+    checked: false,
 });
 
 /** 解析 symbol 模式的 iconfont.js / svg */

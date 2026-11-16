@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { Select, Toast } from "minreact-ui";
+import { useEffect, useState } from "react";
+import { Toast } from "minreact-ui";
 import { api } from "@/api";
 import { cartItemsToInputs, useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { useProjectStore } from "@/store/projectStore";
-import { getProjectAccess } from "@/utils/permission";
+import type { Project } from "@/types";
 import { AppIcon } from "@/components/common/AppIcon";
 import { EmptyState } from "@/components/common/EmptyState";
 import { SvgPreview } from "@/components/common/SvgPreview";
+import { ProjectPicker } from "@/components/project/ProjectPicker";
 import { PANEL_WIDTH_STORAGE_PREFIX } from "@/config";
 import { usePanelResize } from "@/hooks/usePanelResize";
 
@@ -35,9 +36,7 @@ export const CartDrawer = () => {
     const remove = useCartStore((state) => state.remove);
     const clear = useCartStore((state) => state.clear);
     const user = useAuthStore((state) => state.user);
-    const projects = useProjectStore((state) => state.projects);
     const loadProjects = useProjectStore((state) => state.loadProjects);
-    const [targetId, setTargetId] = useState("");
     const [adding, setAdding] = useState(false);
     const { width, panelRef, resizerProps } = usePanelResize({
         storageKey: `${PANEL_WIDTH_STORAGE_PREFIX}cart`,
@@ -53,30 +52,16 @@ export const CartDrawer = () => {
         }
     }, [open, user, loadProjects]);
 
-    const editableProjects = useMemo(
-        () => projects.filter((project) => getProjectAccess(project, user).canEdit),
-        [projects, user],
-    );
+    const addDisabled = adding || items.length === 0;
 
-    useEffect(() => {
-        if (!targetId && editableProjects.length > 0) {
-            setTargetId(editableProjects[0].id);
-        }
-    }, [editableProjects, targetId]);
-
-    const addSelected = async () => {
-        if (!targetId) {
-            Toast.showWarning("请先选择一个目标项目");
-            return;
-        }
-        if (items.length === 0) {
+    const addToProject = async (project: Project) => {
+        if (addDisabled) {
             return;
         }
         setAdding(true);
         try {
-            const created = await api.icons.createIcons(targetId, cartItemsToInputs(items));
-            const project = editableProjects.find((item) => item.id === targetId);
-            Toast.showSuccess(`已把 ${created.length} 个图标加入「${project?.name || "项目"}」`);
+            const created = await api.icons.createIcons(project.id, cartItemsToInputs(items));
+            Toast.showSuccess(`已把 ${created.length} 个图标加入「${project.name}」`);
             clear();
             setOpen(false);
             void loadProjects();
@@ -133,27 +118,23 @@ export const CartDrawer = () => {
 
                 <footer className="cart-drawer__foot">
                     {user ? (
-                        editableProjects.length > 0 ? (
-                            <>
-                                <Select
-                                    key={targetId}
-                                    items={editableProjects.map((project) => ({
-                                        value: project.id,
-                                        label: project.name,
-                                        icon: <AppIcon name="folder" />,
-                                    }))}
-                                    value={targetId}
-                                    placeholder="选择项目"
-                                    onChange={(value) => typeof value === "string" && setTargetId(value)}
-                                    triggerClassName="ui-btn"
-                                />
-                                <button className="ui-btn primary" type="button" disabled={adding || items.length === 0} onClick={() => void addSelected()}>
-                                    <AppIcon name="plus" />
-                                    {adding ? "加入中..." : `批量加入项目（${items.length}）`}
-                                </button>
-                            </>
+                        addDisabled ? (
+                            <button className="ui-btn primary" type="button" disabled>
+                                <AppIcon name="plus" />
+                                {adding ? "加入中..." : "加入项目"}
+                            </button>
                         ) : (
-                            <p className="ui-note">你还没有可编辑的项目，请先创建一个（或让项目管理员把你加为协作人员）。</p>
+                            <ProjectPicker
+                                editableOnly
+                                emptyText="没有可编辑的项目，请先创建项目"
+                                trigger={
+                                    <span className="ui-btn primary">
+                                        <AppIcon name="plus" />
+                                        加入项目
+                                    </span>
+                                }
+                                onSelect={(project) => void addToProject(project)}
+                            />
                         )
                     ) : (
                         <p className="ui-note">登录后即可把采集车里的图标批量加入项目。</p>

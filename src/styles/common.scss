@@ -28,6 +28,18 @@
         @include button-tonal;
     }
 
+    // 无边框的危险按钮：仅文字为危险色，hover 才铺底色
+    &.button-tonal.danger {
+        color: var(--color-danger);
+        border-color: transparent;
+        background: transparent;
+
+        &:hover {
+            color: var(--color-danger);
+            background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+        }
+    }
+
     &.causel,
     &.button-causel {
         border-radius: 999em;
@@ -38,6 +50,11 @@
         --element-height: 1.5rem;
         --element-padding: 0.5em;
         font-size: var(--font-small);
+    }
+
+    // 按钮内嵌图标时收紧图标与文字的间距
+    &:has(.app-icon) {
+        gap: 0.1em;
     }
 }
 
@@ -54,15 +71,7 @@
     }
 
     &::after {
-        content: "";
-        flex: none;
-        margin-left: auto;
-        width: 0;
-        height: 0;
-        border-left: 0.3em solid transparent;
-        border-right: 0.3em solid transparent;
-        border-top: 0.32em solid currentColor;
-        opacity: 0.55;
+        @include caret-down;
         transition: transform 0.2s linear;
     }
 
@@ -73,6 +82,21 @@
     .app-icon {
         width: 0.9rem;
         height: 0.9rem;
+    }
+}
+
+// 下拉菜单 / Select 触发器：文字按钮自动追加右侧小箭头（纯图标触发器不适用）
+.ui-btn.minreactui-dropdown-menu-trigger {
+    padding-right: 0.55em;
+
+    &::after {
+        @include caret-down;
+        margin-left: 0.25em;
+        transition: transform 0.2s linear;
+    }
+
+    &[aria-expanded='true']::after {
+        transform: rotate(180deg);
     }
 }
 
@@ -95,6 +119,11 @@
 }
 
 // ---------- 表单 ----------
+// 对话框表单：display: contents 让 form 不产生额外布局盒
+.dialog-form {
+    display: contents;
+}
+
 .ui-input,
 .ui-textarea {
     width: 100%;
@@ -121,7 +150,149 @@
     min-height: 6rem;
     resize: vertical;
     line-height: 1.45;
-    font-family: var(--font-code);
+
+    // 源码 / 模板类输入需要等宽字体
+    &.code {
+        font-family: var(--font-code);
+    }
+}
+
+// ---------- 标签编辑器：[标签1 x] [标签2 x] | ----------
+.tag-editor {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: var(--element-height);
+    padding: 0.25rem 0.4rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--element-radius);
+    background: var(--color-background);
+    cursor: text;
+    transition: border-color 0.15s ease;
+
+    &:focus-within {
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 1px var(--color-accent);
+    }
+
+    &--bare {
+        padding: 0;
+        border: none;
+        background: transparent;
+        justify-content: center;
+
+        &:focus-within {
+            box-shadow: none;
+        }
+    }
+
+    &.is-disabled {
+        background: var(--color-background-secondary);
+        cursor: default;
+    }
+
+    &__tag {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.15rem;
+        max-width: 100%;
+        padding: 0.1rem 0.2rem 0.1rem 0.4rem;
+        border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+        border-radius: 4px;
+        background: var(--color-accent-soft);
+        font-size: 0.74rem;
+        line-height: 1.4;
+        cursor: grab;
+
+        .tag-editor--bare & {
+            border-color: transparent;
+            background: transparent;
+            padding: 0 0.1rem;
+            color: var(--color-secondary);
+            font-size: 0.66rem;
+            cursor: default;
+        }
+
+        &.dragging {
+            opacity: 0.45;
+        }
+
+        &.drop-before::before,
+        &.drop-after::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            z-index: 2;
+            width: 2px;
+            border-radius: 2px;
+            background: var(--color-accent);
+            pointer-events: none;
+        }
+
+        &.drop-before::before {
+            left: -0.2rem;
+        }
+
+        &.drop-after::after {
+            right: -0.2rem;
+        }
+    }
+
+    &__text {
+        min-width: 0;
+        @include ellipsis;
+    }
+
+    &__remove {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 0.9rem;
+        height: 0.9rem;
+        border-radius: 3px;
+        color: var(--color-secondary);
+        cursor: pointer;
+
+        .app-icon {
+            width: 0.62rem;
+            height: 0.62rem;
+        }
+
+        &:hover {
+            color: var(--color-danger);
+            background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+        }
+
+        .tag-editor--bare & {
+            display: none;
+        }
+
+        .tag-editor--bare.is-disabled & {
+            display: none;
+        }
+    }
+
+    &__input {
+        flex: 1 1 3.5em;
+        min-width: 3.5em;
+        height: 1.2rem;
+        padding: 0 0 0 0.35rem;
+        border: none;
+        border-left: 1px solid var(--color-border-strong);
+        border-radius: 0;
+        background: transparent;
+        color: var(--color);
+        font-family: inherit;
+        font-size: 0.74rem;
+        outline: none;
+
+        &::placeholder {
+            color: var(--color-placeholder);
+        }
+    }
 }
 
 .ui-field {
@@ -145,6 +316,69 @@
     display: flex;
     flex-direction: column;
     gap: 0.9em;
+}
+
+// 左右布局表单：左侧标签列，右侧控件列，隔行底色
+.ui-form-landscape {
+    .ui-form-group + .ui-form-group {
+        margin-top: 1.1em;
+    }
+
+    .ui-form-group__title {
+        padding-bottom: 0.3em;
+        border-bottom: 1px solid var(--color-border);
+        color: var(--color-secondary);
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+
+    .ui-form-group__content {
+        display: table;
+        width: 100%;
+    }
+
+    .ui-form-item {
+        display: table-row;
+
+        &:nth-child(even) {
+            background: var(--color-background-lite);
+        }
+    }
+
+    .ui-form-item__label,
+    .ui-form-item__content {
+        display: table-cell;
+        padding: 0.5em 0.6em;
+        vertical-align: middle;
+    }
+
+    .ui-form-item__label {
+        width: 6em;
+        white-space: nowrap;
+        color: var(--color-secondary);
+    }
+
+    .ui-form-item__content {
+        > * {
+            vertical-align: middle;
+
+            & + * {
+                margin-left: 0.5em;
+            }
+        }
+    }
+
+    .ui-form-item__toggle-gap {
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+    }
+
+    .ui-form-item__tip {
+        margin-left: 0.75em;
+        font-size: 0.72rem;
+        color: var(--color-placeholder);
+    }
 }
 
 .ui-row {
@@ -267,8 +501,8 @@ input[type='checkbox'] {
 
 .app-icon {
     display: inline-flex;
-    width: 1em;
-    height: 1em;
+    width: 1.2em;
+    height: 1.2em;
     line-height: 0;
     flex: none;
 
@@ -407,7 +641,6 @@ input[type='checkbox'] {
 }
 
 .ui-note {
-    font-size: 0.75rem;
     color: var(--color-secondary);
     line-height: 1.6;
 

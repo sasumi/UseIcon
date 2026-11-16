@@ -1,18 +1,24 @@
 import { useRef, useState } from "react";
-import { DIALOG_SIZE_LARGE, Dialog, Tabs, Toast } from "minreact-ui";
-import type { TabItem } from "minreact-ui";
+import { Checkbox, DIALOG_SIZE_LARGE, Dialog, InlineTextEditor, Select, Toast } from "minreact-ui";
 import { api } from "@/api";
 import type { IconCandidate } from "@/types";
-import { parseIconfontSource } from "@/utils/iconfont";
+import { parseIconfontSource, parseSvgCollection } from "@/utils/iconfont";
 import { imageFileToSvg } from "@/utils/image";
 import { nameFromFileName, normalizeSvg } from "@/utils/svg";
+import { useDisplayStore } from "@/store/displayStore";
+import { useDialogForm } from "@/hooks/useDialogForm";
 import { AppIcon } from "@/components/common/AppIcon";
 import { FileDropZone } from "@/components/common/FileDropZone";
 import { SvgPreview } from "@/components/common/SvgPreview";
+import { TagEditor } from "@/components/common/TagEditor";
 
-type UploadTab = "svg" | "image" | "iconfont";
+/** 上传区接受的文件：SVG、位图、iconfont 下载包里的 js / svg 文本 */
+const ACCEPT = ".svg,image/svg+xml,image/png,image/jpeg,image/webp,image/gif,.js,.json,.txt,.css";
 
-/** 图标上传 / 导入对话框 */
+const TEXT_EXTENSIONS = ["js", "json", "txt", "css", "html", "htm"];
+const ICONFONT_HINT = /<symbol|<glyph|<font[\s>]|@font-face/i;
+
+/** 图标上传 / 导入对话框：统一入口，自动识别 SVG / 图片 / iconfont 文件 */
 export const UploadDialog = ({
     open,
     setOpen,
@@ -24,13 +30,14 @@ export const UploadDialog = ({
     projectId: string; // 目标项目
     onImported: () => void; // 导入完成回调
 }) => {
-    const [tab, setTab] = useState<UploadTab>("svg");
     const [candidates, setCandidates] = useState<IconCandidate[]>([]);
     const [iconfontText, setIconfontText] = useState("");
     const [prefix, setPrefix] = useState("");
     const [busy, setBusy] = useState(false);
     const [saving, setSaving] = useState(false);
     const handledFiles = useRef(new WeakSet<File>());
+    const display = useDisplayStore((state) => state.display);
+    const previewSize = display.size + display.padding * 2;
 
     const reset = () => {
         setCandidates([]);
@@ -38,7 +45,6 @@ export const UploadDialog = ({
         setPrefix("");
         setBusy(false);
         setSaving(false);
-        setTab("svg");
     };
 
     const mergeCandidates = (items: IconCandidate[]) => {
@@ -59,20 +65,61 @@ export const UploadDialog = ({
         });
     };
 
+    /** 文本内容解析：先按 iconfont（symbol / SVG 字体），再退回纯 SVG 集合 */
+    const parseText = (text: string): IconCandidate[] => {
+        try {
+            const iconfontItems = parseIconfontSource(text);
+            if (iconfontItems.length > 0) {
+                return iconfontItems;
+            }
+        } catch {
+            // 不是 iconfont 格式，继续尝试 SVG 集合
+        }
+        try {
+            return parseSvgCollection(text);
+        } catch {
+            return [];
+        }
+    };
+
+    /** 按扩展名 / MIME / 内容自动选择解析方式 */
     const handleFile = async (file: File) => {
+        const ext = file.name.split(".").pop()?.toLowerCase() || "";
         setBusy(true);
         try {
-            const className = nameFromFileName(file.name);
-            if (tab === "svg") {
-                const text = await file.text();
-                mergeCandidates([{ key: `svg-${file.name}-${file.lastModified}`, className, svg: normalizeSvg(text), tags: [], checked: true }]);
-            } else if (tab === "image") {
+            if (file.type.startsWith("image/") && ext !== "svg") {
                 const svg = await imageFileToSvg(file);
-                mergeCandidates([{ key: `image-${file.name}-${file.lastModified}`, className, svg, tags: [], checked: true }]);
-            } else {
-                const text = await file.text();
-                mergeCandidates(parseIconfontSource(text));
+                mergeCandidates([
+                    { key: `image-${file.name}-${file.lastModified}`, className: nameFromFileName(file.name), svg, tags: [], checked: false },
+                ]);
+                return;
             }
+
+            if (!file.type.startsWith("image/") && !TEXT_EXTENSIONS.includes(ext)) {
+                Toast.showError(`${file.name}：不支持的文件类型`);
+                return;
+            }
+
+            const text = await file.text();
+            if (ext === "svg" && !ICONFONT_HINT.test(text)) {
+                mergeCandidates([
+                    {
+                        key: `svg-${file.name}-${file.lastModified}`,
+                        className: nameFromFileName(file.name),
+                        svg: normalizeSvg(text),
+                        tags: [],
+                        checked: false,
+                    },
+                ]);
+                return;
+            }
+
+            const items = parseText(text);
+            if (items.length === 0) {
+                Toast.showWarning(`${file.name}：没有解析到图标`);
+                return;
+            }
+            mergeCandidates(items);
         } catch (error) {
             Toast.showError(`${file.name}：${error instanceof Error ? error.message : "解析失败"}`);
         } finally {
@@ -85,18 +132,14 @@ export const UploadDialog = ({
             Toast.showWarning("请先粘贴 iconfont 的 symbol 内容或 SVG 字体内容");
             return;
         }
-        try {
-            const items = parseIconfontSource(iconfontText);
-            if (items.length === 0) {
-                Toast.showWarning("没有解析到图标");
-                return;
-            }
-            mergeCandidates(items);
-            setIconfontText("");
-            Toast.showSuccess(`解析到 ${items.length} 个图标`);
-        } catch (error) {
-            Toast.showError(error instanceof Error ? error.message : "解析失败");
+        const items = parseText(iconfontText);
+        if (items.length === 0) {
+            Toast.showWarning("没有解析到图标");
+            return;
         }
+        mergeCandidates(items);
+        setIconfontText("");
+        Toast.showSuccess(`解析到 ${items.length} 个图标`);
     };
 
     const toggleCandidate = (key: string, checked: boolean) => {
@@ -108,6 +151,8 @@ export const UploadDialog = ({
     };
 
     const checkedCount = candidates.filter((item) => item.checked).length;
+
+    const { formProps, submitProps } = useDialogForm(parseClipboardText);
 
     const submit = async () => {
         const selected = candidates.filter((item) => item.checked);
@@ -137,79 +182,36 @@ export const UploadDialog = ({
         }
     };
 
-    const tabs: TabItem[] = [
-        {
-            trigger: "SVG 文件",
-            content: (
-                <div className="upload-tab">
-                    <FileDropZone
-                        multiple
-                        accept=".svg,image/svg+xml"
-                        onChange={pickFiles}
-                        icon={<AppIcon name="upload" />}
-                        title="选择或拖入 SVG 文件"
-                        description="支持一次选择多个 .svg 文件，导入后自动标准化"
-                    />
-                </div>
-            ),
-        },
-        {
-            trigger: "图片转 SVG",
-            content: (
-                <div className="upload-tab">
-                    <FileDropZone
-                        multiple
-                        accept="image/png,image/jpeg,image/webp"
-                        onChange={pickFiles}
-                        icon={<AppIcon name="image" />}
-                        title="选择或拖入图片"
-                        description="PNG / JPG / WebP 会按最大 512px 压缩后内嵌到 SVG 中"
-                    />
-                    <p className="ui-note">位图图标无法矢量放大；需要无损缩放时请上传原始 SVG。</p>
-                </div>
-            ),
-        },
-        {
-            trigger: "iconfont 导入",
-            content: (
-                <div className="upload-tab">
-                    <FileDropZone
-                        accept=".js,.svg,text/javascript,image/svg+xml"
-                        onChange={pickFiles}
-                        icon={<AppIcon name="code" />}
-                        title="选择 iconfont.js 或 iconfont.svg"
-                        description="iconfont 下载包中的 Symbol（iconfont.js）或 SVG 字体（iconfont.svg）"
-                    />
-                    <div className="ui-field">
-                        <label>或粘贴 iconfont 内容</label>
-                        <textarea
-                            className="ui-textarea"
-                            placeholder="<svg><symbol id=&quot;icon-xxx&quot; ...></symbol></svg>"
-                            value={iconfontText}
-                            onChange={(event) => setIconfontText(event.target.value)}
-                        />
-                    </div>
-                    <div className="toolbar">
-                        <button className="ui-btn" type="button" onClick={parseClipboardText}>
-                            <AppIcon name="refresh" />
-                            解析粘贴内容
-                        </button>
-                    </div>
-                </div>
-            ),
-        },
-    ];
-
     return (
         <Dialog open={open} setOpen={setOpen} width={DIALOG_SIZE_LARGE} clickMaskerToClose>
             <Dialog.Title>上传 / 导入图标</Dialog.Title>
             <Dialog.Content>
                 <div className="dialog-body">
-                    <Tabs
-                        items={tabs}
-                        index={tab === "svg" ? 0 : tab === "image" ? 1 : 2}
-                        onIndexChange={(index) => setTab(index === 0 ? "svg" : index === 1 ? "image" : "iconfont")}
+                    <FileDropZone
+                        multiple
+                        accept={ACCEPT}
+                        onChange={pickFiles}
+                        icon={<AppIcon name="upload" />}
+                        title="选择或拖入文件"
+                        description="自动识别 SVG、PNG / JPG / WebP 图片、iconfont 下载包（iconfont.js / iconfont.svg）"
                     />
+
+                    <form {...formProps}>
+                        <div className="upload-paste">
+                            <label className="upload-paste__label">粘贴 iconfont 内容</label>
+                            <input
+                                className="ui-input"
+                                placeholder="粘贴 iconfont 的 symbol 内容或 SVG 字体代码"
+                                value={iconfontText}
+                                onChange={(event) => setIconfontText(event.target.value)}
+                            />
+                            <button className="ui-btn small" {...submitProps}>
+                                <AppIcon name="refresh" />
+                                解析
+                            </button>
+                        </div>
+                    </form>
+
                     {busy && <div className="ui-loading">正在解析文件...</div>}
 
                     {candidates.length > 0 && (
@@ -226,33 +228,71 @@ export const UploadDialog = ({
                                     value={prefix}
                                     onChange={(event) => setPrefix(event.target.value.replace(/\s+/g, "-"))}
                                 />
-                                <button className="ui-btn small" type="button" onClick={() => setCandidates((prev) => prev.map((item) => ({ ...item, checked: true })))}>
-                                    全选
-                                </button>
+                                <Select
+                                    items={[
+                                        { value: "all", label: "全选", icon: <AppIcon name="check" /> },
+                                        { value: "invert", label: "反选", icon: <AppIcon name="refresh" /> },
+                                        { value: "none", label: "全不选", icon: <AppIcon name="close" /> },
+                                    ]}
+                                    triggerClassName="ui-btn small button-tonal"
+                                    placeholder="全选"
+                                    onChange={(value) => {
+                                        if (value === "all") {
+                                            setCandidates((prev) => prev.map((item) => ({ ...item, checked: true })));
+                                        } else if (value === "none") {
+                                            setCandidates((prev) => prev.map((item) => ({ ...item, checked: false })));
+                                        } else {
+                                            setCandidates((prev) => prev.map((item) => ({ ...item, checked: !item.checked })));
+                                        }
+                                    }}
+                                />
                                 <button className="ui-btn small" type="button" onClick={() => setCandidates([])}>
                                     清空
                                 </button>
                             </div>
-                            <ul className="candidate-list">
+                            <ul className="icon-grid">
                                 {candidates.map((item) => (
-                                    <li key={item.key} className="candidate-item">
-                                        <input type="checkbox" checked={Boolean(item.checked)} onChange={(event) => toggleCandidate(item.key, event.target.checked)} />
-                                        <SvgPreview svg={item.svg} size={22} />
-                                        <input
-                                            className="ui-input"
-                                            value={item.className}
-                                            onChange={(event) => updateCandidate(item.key, { className: event.target.value })}
-                                        />
-                                        <input
-                                            className="ui-input"
-                                            placeholder="标签（逗号分隔）"
-                                            value={(item.tags || []).join(", ")}
-                                            onChange={(event) =>
-                                                updateCandidate(item.key, {
-                                                    tags: event.target.value.split(/[,，\s]+/).filter(Boolean),
-                                                })
-                                            }
-                                        />
+                                    <li key={item.key}>
+                                        <div className={`icon-card ${item.checked ? "selected" : ""}`}>
+                                            <span className="icon-card__check">
+                                                <Checkbox
+                                                    checked={Boolean(item.checked)}
+                                                    onChange={(checked) => toggleCandidate(item.key, checked)}
+                                                    aria-label={`选择 ${item.className}`}
+                                                />
+                                            </span>
+                                            <div
+                                                className="icon-card__preview"
+                                                style={{
+                                                    width: previewSize,
+                                                    height: previewSize,
+                                                    padding: display.padding,
+                                                    background: display.background || undefined,
+                                                    color: display.color || undefined,
+                                                }}
+                                            >
+                                                <SvgPreview svg={item.svg} size={display.size} />
+                                            </div>
+                                            <div className="icon-card__meta">
+                                                <span className="candidate-meta__name">
+                                                    <InlineTextEditor
+                                                        value={item.className}
+                                                        required
+                                                        saveHandler={async (value) => {
+                                                            const name = value.trim();
+                                                            if (name) {
+                                                                updateCandidate(item.key, { className: name });
+                                                            }
+                                                        }}
+                                                    />
+                                                </span>
+                                                <TagEditor
+                                                    bare
+                                                    value={item.tags || []}
+                                                    onChange={(tags) => updateCandidate(item.key, { tags })}
+                                                />
+                                            </div>
+                                        </div>
                                     </li>
                                 ))}
                             </ul>

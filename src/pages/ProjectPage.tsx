@@ -24,16 +24,26 @@ import { DisplayControl } from "@/components/library/DisplayPanel";
 import { IconDetailDialog } from "@/components/project/IconDetailDialog";
 import { PickLibraryDialog } from "@/components/project/PickLibraryDialog";
 import { ProjectFormDialog } from "@/components/project/ProjectFormDialog";
-import { ProjectSettingsDialog } from "@/components/project/ProjectSettingsDialog";
+import { ProjectBasicsDialog } from "@/components/project/ProjectBasicsDialog";
+import { ProjectMembersDialog } from "@/components/project/ProjectMembersDialog";
+import { ProjectTemplateDialog } from "@/components/project/ProjectTemplateDialog";
 import { UploadDialog } from "@/components/project/UploadDialog";
 
 type SortMode = "default" | "name-asc" | "name-desc" | "custom";
+
+type SettingsDialogKey = "basics" | "members" | "template" | null;
+
+const SETTINGS_ITEMS: MenuEntry[] = [
+    { value: "basics", label: "基础设置", icon: <AppIcon name="settings" /> },
+    { value: "members", label: "成员与权限", icon: <AppIcon name="users" /> },
+    { value: "template", label: "代码模板", icon: <AppIcon name="code" /> },
+];
 
 const SORT_ITEMS: MenuEntry[] = [
     { value: "default", label: "默认顺序", icon: <AppIcon name="layers" /> },
     { value: "name-asc", label: "名称 A → Z", icon: <AppIcon name="arrow-down" /> },
     { value: "name-desc", label: "名称 Z → A", icon: <AppIcon name="arrow-up" /> },
-    { value: "custom", label: "自定义排序", icon: <AppIcon name="move" /> },
+    { value: "custom", label: "自定义排序", icon: <AppIcon name="more-vertical" /> },
 ];
 
 const SORT_LABELS: Record<SortMode, string> = {
@@ -74,12 +84,13 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     const [createOpen, setCreateOpen] = useState(false);
     const [uploadOpen, setUploadOpen] = useState(false);
     const [pickOpen, setPickOpen] = useState(false);
-    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [settingsDialog, setSettingsDialog] = useState<SettingsDialogKey>(null);
     const [optimizeOpen, setOptimizeOpen] = useState(false);
     const [renameOpen, setRenameOpen] = useState(false);
     const [detail, setDetail] = useState<IconItem | null>(null);
     const [sortMode, setSortMode] = useState<SortMode>("default");
     const [dragIconId, setDragIconId] = useState<string | null>(null);
+    const [dropTarget, setDropTarget] = useState<{ id: string; position: "before" | "after" } | null>(null);
 
     const favorites = useLibraryStore((state) => state.favorites);
     const addFavorite = useLibraryStore((state) => state.addFavorite);
@@ -197,19 +208,25 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     };
 
     /** 自定义排序：把拖动的图标插入到目标位置并及时保存 */
-    const dropOnIcon = (targetId: string) => {
+    const dropOnIcon = (targetId: string, position: "before" | "after") => {
         if (!dragIconId || dragIconId === targetId) {
             setDragIconId(null);
+            setDropTarget(null);
             return;
         }
         const ids = icons.map((icon) => icon.id);
         const from = ids.indexOf(dragIconId);
-        const to = ids.indexOf(targetId);
         setDragIconId(null);
-        if (from < 0 || to < 0) {
+        setDropTarget(null);
+        if (from < 0) {
             return;
         }
-        ids.splice(to, 0, ...ids.splice(from, 1));
+        ids.splice(from, 1);
+        const targetIndex = ids.indexOf(targetId);
+        if (targetIndex < 0) {
+            return;
+        }
+        ids.splice(position === "before" ? targetIndex : targetIndex + 1, 0, dragIconId);
         useProjectStore.getState().setIconsOrder(ids);
         void api.icons.reorderIcons(activeProjectId, ids).catch((err: unknown) => {
             Toast.showError(err instanceof Error ? err.message : "排序保存失败");
@@ -371,18 +388,22 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 <div className="project-header">
                     <div className="project-header__main">
                         <div className="project-header__title">
-                            <h2>{project.name}</h2>
-                            <span className={`ui-badge ${project.visibility === "public" ? "public" : "viewer"}`}>
-                                {project.visibility === "public" ? "公开项目" : "内部项目"}
-                            </span>
+                            <h2>
+                                <AppIcon
+                                    name={project.visibility === "public" ? "globe" : "lock"}
+                                    className="project-header__visibility"
+                                    title={project.visibility === "public" ? "公开项目" : "内部项目（仅成员可见）"}
+                                />
+                                {project.name}
+                            </h2>
                             {project.allowGuest && <span className="ui-badge guest">允许游客</span>}
                         </div>
                         <p className="project-header__desc">{project.description || "暂无描述"}</p>
                     </div>
                     <div className="project-header__actions">
-                        <button className="ui-btn small" type="button" onClick={openExtMode}>
+                        <button className="ui-btn small" type="button" title="在新窗口打开竖屏拓展模式" onClick={openExtMode}>
                             <AppIcon name="monitor" />
-                            ExtMode
+                            拓展模式
                         </button>
                         {access.canEdit && (
                             <button className="ui-btn small primary" type="button" onClick={() => setUploadOpen(true)}>
@@ -397,10 +418,16 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                             label="导出"
                         />
                         {access.canManage && (
-                            <button className="ui-btn small" type="button" onClick={() => setSettingsOpen(true)}>
-                                <AppIcon name="settings" />
-                                设置
-                            </button>
+                            <DropdownMenu
+                                items={SETTINGS_ITEMS}
+                                onChange={(value) => setSettingsDialog(value as SettingsDialogKey)}
+                                trigger={
+                                    <span className="ui-btn small">
+                                        <AppIcon name="settings" />
+                                        设置
+                                    </span>
+                                }
+                            />
                         )}
                     </div>
                 </div>
@@ -491,7 +518,12 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                         {filtered.map((icon) => (
                             <li
                                 key={icon.id}
-                                className={dragIconId === icon.id ? "dragging" : ""}
+                                className={[
+                                    dragIconId === icon.id ? "dragging" : "",
+                                    dropTarget?.id === icon.id ? `drop-${dropTarget.position}` : "",
+                                ]
+                                    .filter(Boolean)
+                                    .join(" ")}
                                 draggable={canSort}
                                 onDragStart={(event) => {
                                     if (!canSort) {
@@ -507,15 +539,40 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                                     }
                                     event.preventDefault();
                                     event.dataTransfer.dropEffect = "move";
+                                    if (dragIconId === icon.id) {
+                                        setDropTarget(null);
+                                        return;
+                                    }
+                                    // 光标落在卡片左半边插到前面，右半边插到后面
+                                    const rect = event.currentTarget.getBoundingClientRect();
+                                    const position = event.clientX < rect.left + rect.width / 2 ? "before" : "after";
+                                    setDropTarget((prev) =>
+                                        prev?.id === icon.id && prev.position === position ? prev : { id: icon.id, position },
+                                    );
+                                }}
+                                onDragLeave={(event) => {
+                                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                                        setDropTarget((prev) => (prev?.id === icon.id ? null : prev));
+                                    }
                                 }}
                                 onDrop={(event) => {
                                     if (!canSort) {
                                         return;
                                     }
                                     event.preventDefault();
-                                    dropOnIcon(icon.id);
+                                    const rect = event.currentTarget.getBoundingClientRect();
+                                    const position =
+                                        dropTarget?.id === icon.id
+                                            ? dropTarget.position
+                                            : event.clientX < rect.left + rect.width / 2
+                                              ? "before"
+                                              : "after";
+                                    dropOnIcon(icon.id, position);
                                 }}
-                                onDragEnd={() => setDragIconId(null)}
+                                onDragEnd={() => {
+                                    setDragIconId(null);
+                                    setDropTarget(null);
+                                }}
                             >
                                 <IconCard
                                     icon={icon}
@@ -579,15 +636,27 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                     setSelected([]);
                 }}
             />
-            <ProjectSettingsDialog
-                open={settingsOpen}
-                setOpen={setSettingsOpen}
+            <ProjectBasicsDialog
+                open={settingsDialog === "basics"}
+                setOpen={(open) => setSettingsDialog(open ? "basics" : null)}
                 project={project}
                 onUpdated={(updated) => setCurrent(updated)}
                 onDeleted={() => {
                     void useProjectStore.getState().loadProjects();
                     navigate("/projects");
                 }}
+            />
+            <ProjectMembersDialog
+                open={settingsDialog === "members"}
+                setOpen={(open) => setSettingsDialog(open ? "members" : null)}
+                project={project}
+                onUpdated={(updated) => setCurrent(updated)}
+            />
+            <ProjectTemplateDialog
+                open={settingsDialog === "template"}
+                setOpen={(open) => setSettingsDialog(open ? "template" : null)}
+                project={project}
+                onUpdated={(updated) => setCurrent(updated)}
             />
             <IconDetailDialog
                 open={Boolean(detail)}

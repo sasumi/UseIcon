@@ -3,8 +3,14 @@ import { TOKEN_STORAGE_KEY } from "@/config";
 /** 公共 API（用户 / 鉴权 / 账户 / 附件），由 ttapi 提供 */
 const DEFAULT_PUBLIC_API_HOST = "https://api.tthaoke.com/";
 
+/** UseIcon 业务 API（项目 / 图标 / 收藏），由 uiapi 提供 */
+const DEFAULT_ICON_API_HOST = "https://uiapi.tthaoke.com/";
+
 /** 公共 API 主机（可在 .env 中用 VITE_PUBLIC_API_HOST 覆盖） */
 export const PUBLIC_API_HOST = String(import.meta.env.VITE_PUBLIC_API_HOST || DEFAULT_PUBLIC_API_HOST).replace(/\/+$/, "/");
+
+/** 业务 API 主机（可在 .env 中用 VITE_ICON_API_HOST 覆盖） */
+export const ICON_API_HOST = String(import.meta.env.VITE_ICON_API_HOST || DEFAULT_ICON_API_HOST).replace(/\/+$/, "/");
 
 /** 请求超时（毫秒） */
 const REQUEST_TIMEOUT = 20_000;
@@ -45,8 +51,8 @@ export const setToken = (token: string | null): void => {
 };
 
 /** 构造接口地址：<host><uri> */
-export const getApiUrl = (uri: string, params?: Record<string, string | number | null | undefined>): string => {
-    let url = PUBLIC_API_HOST + uri;
+export const getApiUrl = (uri: string, params?: Record<string, string | number | null | undefined>, host = PUBLIC_API_HOST): string => {
+    let url = host + uri;
     const entries = Object.entries(params || {}).filter(([, value]) => value !== null && value !== undefined);
     if (entries.length > 0) {
         url += `?${new URLSearchParams(entries.map(([key, value]) => [key, String(value)])).toString()}`;
@@ -61,15 +67,17 @@ export const apiRequestJSON = async ({
     uri,
     data = null,
     method = "GET",
+    host = PUBLIC_API_HOST,
 }: {
     uri: string; // 接口路径，如 auth/updateLoginUser
     data?: Record<string, unknown> | null; // 请求数据
     method?: "GET" | "POST";
+    host?: string; // 接口主机，默认公共 API
 }): Promise<any> => {
     const hasFile = Object.values(data || {}).some((value) => value instanceof File);
     const upperMethod = hasFile ? "POST" : method.toUpperCase();
     const query = upperMethod === "GET" && data ? (data as Record<string, string | number | null | undefined>) : undefined;
-    const url = getApiUrl(uri, query);
+    const url = getApiUrl(uri, query, host);
 
     const headers: Record<string, string> = { Accept: "application/json" };
     let body: BodyInit | null = null;
@@ -116,10 +124,21 @@ export const apiRequestJSON = async ({
     return result.data;
 };
 
-/** GET 请求 */
+/** 公共 API GET 请求 */
 export const apiGetJSON = (uri: string, data: Record<string, string | number | null | undefined> | null = null) =>
     apiRequestJSON({ uri, data, method: "GET" });
 
-/** POST 请求 */
+/** 公共 API POST 请求 */
 export const apiPostJSON = (uri: string, data: Record<string, unknown> | null = null) =>
     apiRequestJSON({ uri, data, method: "POST" });
+
+/** 业务 API 路径前缀（nginx 把 /v1/* 重写到框架入口） */
+const ICON_API_PREFIX = "v1/";
+
+/** 业务 API GET 请求 */
+export const iconGetJSON = (uri: string, data: Record<string, string | number | null | undefined> | null = null) =>
+    apiRequestJSON({ uri: ICON_API_PREFIX + uri, data, method: "GET", host: ICON_API_HOST });
+
+/** 业务 API POST 请求 */
+export const iconPostJSON = (uri: string, data: Record<string, unknown> | null = null) =>
+    apiRequestJSON({ uri: ICON_API_PREFIX + uri, data, method: "POST", host: ICON_API_HOST });

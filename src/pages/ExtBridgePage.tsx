@@ -15,7 +15,7 @@ interface BridgeProject {
 
 /**
  * 浏览器扩展桥接页：由扩展的隐藏 iframe 加载，用 postMessage 与扩展面板通信。
- * 页面运行在同源上下文里，因此可以直接复用当前登录态与本地数据。
+ * 页面运行在同源上下文里，因此可以直接复用当前登录态与后台数据。
  */
 export const ExtBridgePage = () => {
     const user = useAuthStore((state) => state.user);

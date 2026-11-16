@@ -1,233 +1,137 @@
-import type { IconInput, IconItem, IconOptimizeOptions, LibraryIcon } from "@/types";
 import { LIBRARY_ICON_MAP } from "@/data/library";
-import { normalizeSvg, optimizeSvg, sanitizeIconName, uniqueIconName } from "@/utils/svg";
-import { getLoginUser } from "./auth";
-import { ApiError, assert, clone, createId, mockResponse } from "./base";
-import { mutateDatabase, readDatabase } from "./db";
-import { requireProjectAccess } from "./guard";
-
-const assertEditAccessForIcons = (iconIds: string[]): string[] => {
-    const db = readDatabase();
-    const projectIds = new Set<string>();
-    iconIds.forEach((iconId) => {
-        const icon = db.icons.find((item) => item.id === iconId);
-        assert(icon, "图标不存在或已被删除", "not-found");
-        projectIds.add(icon!.projectId);
-    });
-    projectIds.forEach((projectId) => requireProjectAccess(projectId, "edit"));
-    return Array.from(projectIds);
-};
+import type { IconInput, IconItem, IconOptimizeOptions, LibraryIcon } from "@/types";
+import { normalizeSvg, optimizeSvg, sanitizeIconName } from "@/utils/svg";
+import { ApiError, iconGetJSON, iconPostJSON } from "./http";
 
 const cleanTags = (tags: string[] | undefined): string[] =>
     Array.from(new Set((tags || []).map((tag) => tag.trim()).filter(Boolean))).slice(0, 8);
 
-const ensureUniqueName = (projectId: string, name: string, excludeId?: string): string => {
-    const existed = readDatabase()
-        .icons.filter((item) => item.projectId === projectId && item.id !== excludeId)
-        .map((item) => item.className);
-    return uniqueIconName(name, existed);
-};
-
 /** 项目图标列表（按自定义排序值，未设置时按创建时间） */
 export const listIcons = (projectId: string): Promise<IconItem[]> =>
-    mockResponse(() => {
-        requireProjectAccess(projectId, "view");
-        return readDatabase()
-            .icons.filter((item) => item.projectId === projectId)
-            .sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER) || a.createdAt - b.createdAt)
-            .map(clone);
-    });
+    iconGetJSON("icon/getList", { project_id: projectId }).then((data) => (data?.list ?? []) as IconItem[]);
 
-/** 单个图标 */
-export const getIcon = (iconId: string): IconItem =>
-    clone(
-        readDatabase().icons.find((item) => item.id === iconId) ||
-            (() => {
-                throw new ApiError("图标不存在或已被删除", "not-found");
-            })(),
-    );
+/** 按 ID 批量取图标 */
+export const listIconsByIds = (iconIds: string[]): Promise<IconItem[]> =>
+    iconGetJSON("icon/getListByIds", { ids: iconIds.join(",") }).then((data) => (data?.list ?? []) as IconItem[]);
+
+/** 单次提交给后台的图标数量上限（多出来的分多次提交） */
+const CREATE_CHUNK_SIZE = 100;
 
 /** 批量新建图标 */
-export const createIcons = (projectId: string, inputs: IconInput[]): Promise<IconItem[]> =>
-    mockResponse(() => {
-        requireProjectAccess(projectId, "edit");
-        assert(inputs.length > 0, "没有可导入的图标");
-        return saveIcons(projectId, inputs.map((input) => ({ ...input })));
+export const createIcons = async (projectId: string, inputs: IconInput[]): Promise<IconItem[]> => {
+    if (inputs.length === 0) {
+        throw new ApiError("没有可导入的图标");
+    }
+    const icons = inputs.map((input) => {
+        let svg: string;
+        try {
+            svg = normalizeSvg(input.svg);
+        } catch {
+            throw new ApiError(`图标「${input.className}」的 SVG 无法解析`, "invalid-svg");
+        }
+        return { className: input.className, svg, tags: cleanTags(input.tags), libraryId: input.libraryId };
     });
+
+    const created: IconItem[] = [];
+    for (let start = 0; start < icons.length; start += CREATE_CHUNK_SIZE) {
+        const chunk = icons.slice(start, start + CREATE_CHUNK_SIZE);
+        const data = await iconPostJSON("icon/create", { project_id: projectId, icons: chunk });
+        created.push(...((data?.list ?? []) as IconItem[]));
+    }
+    return created;
+};
 
 /** 从公共库添加图标 */
-export const addIconsFromLibrary = (projectId: string, libraryIds: string[]): Promise<IconItem[]> =>
-    mockResponse(() => {
-        requireProjectAccess(projectId, "edit");
-        const inputs: IconInput[] = libraryIds.map((libraryId) => {
-            const libraryIcon: LibraryIcon | undefined = LIBRARY_ICON_MAP[libraryId];
-            assert(libraryIcon, "公共库图标不存在", "not-found");
-            return {
-                className: libraryIcon!.className,
-                svg: libraryIcon!.svg,
-                tags: libraryIcon!.tags.slice(0, 3),
-                libraryId: libraryIcon!.id,
-            };
-        });
-        return saveIcons(projectId, inputs);
-    });
-
-/** 写入图标（已校验权限），返回新建的图标 */
-const saveIcons = (projectId: string, inputs: IconInput[]): IconItem[] => {
-    const user = getLoginUser();
-    assert(user, "请先登录", "unauthorized");
-    return mutateDatabase((db) => {
-        const project = db.projects.find((item) => item.id === projectId);
-        const created: IconItem[] = [];
-        const collected: string[] = db.icons.filter((item) => item.projectId === projectId).map((item) => item.className);
-        let nextOrder =
-            db.icons
-                .filter((item) => item.projectId === projectId)
-                .reduce((max, item) => Math.max(max, item.order ?? -1), -1) + 1;
-        inputs.forEach((input) => {
-            let svg: string;
-            try {
-                svg = normalizeSvg(input.svg);
-            } catch {
-                throw new ApiError(`图标「${input.className}」的 SVG 无法解析`, "invalid-svg");
-            }
-            const className = uniqueIconName(input.className, collected);
-            collected.push(className);
-            const icon: IconItem = {
-                id: createId("i"),
-                projectId,
-                className,
-                svg,
-                tags: cleanTags(input.tags),
-                libraryId: input.libraryId,
-                createdBy: user!.id,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-                order: nextOrder++,
-            };
-            db.icons.push(icon);
-            created.push(icon);
-        });
-        if (project) {
-            project.updatedAt = Date.now();
+export const addIconsFromLibrary = (projectId: string, libraryIds: string[]): Promise<IconItem[]> => {
+    const inputs: IconInput[] = libraryIds.map((libraryId) => {
+        const libraryIcon: LibraryIcon | undefined = LIBRARY_ICON_MAP[libraryId];
+        if (!libraryIcon) {
+            throw new ApiError("公共库图标不存在", "not-found");
         }
-        return clone(created);
+        return {
+            className: libraryIcon.className,
+            svg: libraryIcon.svg,
+            tags: libraryIcon.tags.slice(0, 3),
+            libraryId: libraryIcon.id,
+        };
     });
+    return createIcons(projectId, inputs);
 };
 
 /** 更新图标 */
-export const updateIcon = (
-    iconId: string,
-    patch: Partial<Pick<IconItem, "className" | "svg" | "tags">>,
-): Promise<IconItem> =>
-    mockResponse(() => {
-        assertEditAccessForIcons([iconId]);
-        return mutateDatabase((db) => {
-            const icon = db.icons.find((item) => item.id === iconId)!;
-            if (patch.className !== undefined) {
-                const className = sanitizeIconName(patch.className);
-                assert(className.length > 0, "图标类名不能为空");
-                icon.className = ensureUniqueName(icon.projectId, className, iconId);
-            }
-            if (patch.svg !== undefined) {
-                let svg: string;
-                try {
-                    svg = normalizeSvg(patch.svg);
-                } catch {
-                    throw new ApiError("SVG 无法解析", "invalid-svg");
-                }
-                icon.svg = svg;
-            }
-            if (patch.tags !== undefined) {
-                icon.tags = cleanTags(patch.tags);
-            }
-            icon.updatedAt = Date.now();
-            return clone(icon);
-        });
-    });
+export const updateIcon = (iconId: string, patch: Partial<Pick<IconItem, "className" | "svg" | "tags">>): Promise<IconItem> => {
+    const item: Record<string, unknown> = { id: iconId };
+    if (patch.className !== undefined) {
+        item.className = sanitizeIconName(patch.className);
+    }
+    if (patch.svg !== undefined) {
+        try {
+            item.svg = normalizeSvg(patch.svg);
+        } catch {
+            return Promise.reject(new ApiError("SVG 无法解析", "invalid-svg"));
+        }
+    }
+    if (patch.tags !== undefined) {
+        item.tags = cleanTags(patch.tags);
+    }
+    return iconPostJSON("icon/saveBatch", { items: [item] }).then((data) => (data?.list ?? [])[0] as IconItem);
+};
 
 /** 批量删除图标 */
-export const deleteIcons = (iconIds: string[]): Promise<void> =>
-    mockResponse(() => {
-        assert(iconIds.length > 0, "请先选择图标");
-        assertEditAccessForIcons(iconIds);
-        mutateDatabase((db) => {
-            const ids = new Set(iconIds);
-            db.icons = db.icons.filter((item) => !ids.has(item.id));
-        });
-    });
+export const deleteIcons = (iconIds: string[]): Promise<void> => {
+    if (iconIds.length === 0) {
+        return Promise.reject(new ApiError("请先选择图标"));
+    }
+    return iconPostJSON("icon/remove", { ids: iconIds }).then(() => undefined);
+};
 
-/** 保存自定义排序（按传入顺序写入 order） */
-export const reorderIcons = (projectId: string, orderedIds: string[]): Promise<void> =>
-    mockResponse(() => {
-        assert(orderedIds.length > 0, "没有可排序的图标");
-        requireProjectAccess(projectId, "edit");
-        mutateDatabase((db) => {
-            orderedIds.forEach((iconId, index) => {
-                const icon = db.icons.find((item) => item.id === iconId && item.projectId === projectId);
-                if (icon) {
-                    icon.order = index;
-                }
-            });
-        });
-    });
+/** 保存自定义排序（按传入顺序写入排序号） */
+export const reorderIcons = (projectId: string, orderedIds: string[]): Promise<void> => {
+    if (orderedIds.length === 0) {
+        return Promise.reject(new ApiError("没有可排序的图标"));
+    }
+    return iconPostJSON("icon/reorder", { project_id: projectId, ids: orderedIds }).then(() => undefined);
+};
 
-/** 批量优化图标 */
-export const optimizeIcons = (iconIds: string[], options: IconOptimizeOptions): Promise<IconItem[]> =>
-    mockResponse(() => {
-        assert(iconIds.length > 0, "请先选择图标");
-        assertEditAccessForIcons(iconIds);
-        return mutateDatabase((db) => {
-            const updated: IconItem[] = [];
-            db.icons.forEach((icon) => {
-                if (!iconIds.includes(icon.id)) {
-                    return;
-                }
-                try {
-                    icon.svg = optimizeSvg(icon.svg, options);
-                    icon.updatedAt = Date.now();
-                    updated.push(icon);
-                } catch (error) {
-                    console.warn(`图标 ${icon.className} 优化失败`, error);
-                }
-            });
-            assert(updated.length > 0, "没有图标被成功优化", "invalid-svg");
-            return clone(updated);
-        });
+/** 批量优化图标（SVG 处理在浏览器完成，结果一次性提交） */
+export const optimizeIcons = async (iconIds: string[], options: IconOptimizeOptions): Promise<IconItem[]> => {
+    if (iconIds.length === 0) {
+        throw new ApiError("请先选择图标");
+    }
+    const icons = await listIconsByIds(iconIds);
+    const items: { id: string; svg: string }[] = [];
+    icons.forEach((icon) => {
+        try {
+            items.push({ id: icon.id, svg: optimizeSvg(icon.svg, options) });
+        } catch (error) {
+            console.warn(`图标 ${icon.className} 优化失败`, error);
+        }
     });
+    if (items.length === 0) {
+        throw new ApiError("没有图标被成功优化", "invalid-svg");
+    }
+    const data = await iconPostJSON("icon/saveBatch", { items });
+    return (data?.list ?? []) as IconItem[];
+};
 
-/** 批量重命名（前缀 / 后缀 / 查找替换） */
+/** 批量重命名（前缀 / 后缀 / 查找替换，重名由后台自动加序号） */
 export const renameIcons = (
     iconIds: string[],
     options: { prefix?: string; suffix?: string; find?: string; replace?: string },
-): Promise<IconItem[]> =>
-    mockResponse(() => {
-        assert(iconIds.length > 0, "请先选择图标");
-        assertEditAccessForIcons(iconIds);
-        return mutateDatabase((db) => {
-            const updated: IconItem[] = [];
-            const projectId = db.icons.find((item) => item.id === iconIds[0])!.projectId;
-            const collected: string[] = db.icons
-                .filter((item) => item.projectId === projectId && !iconIds.includes(item.id))
-                .map((item) => item.className);
-            db.icons.forEach((icon) => {
-                if (!iconIds.includes(icon.id)) {
-                    return;
-                }
+): Promise<IconItem[]> => {
+    if (iconIds.length === 0) {
+        return Promise.reject(new ApiError("请先选择图标"));
+    }
+    return listIconsByIds(iconIds)
+        .then((icons) => {
+            const items = icons.map((icon) => {
                 let className = icon.className;
                 if (options.find) {
                     className = className.split(options.find).join(options.replace || "");
                 }
-                className = `${options.prefix || ""}${className}${options.suffix || ""}`;
-                className = uniqueIconName(className, collected);
-                collected.push(className);
-                icon.className = className;
-                icon.updatedAt = Date.now();
-                updated.push(icon);
+                return { id: icon.id, className: `${options.prefix || ""}${className}${options.suffix || ""}` };
             });
-            return clone(updated);
-        });
-    });
-
-/** 公共库搜索用的全部图标（含分类） */
-export { listLibraryIcons } from "./favorites";
+            return iconPostJSON("icon/saveBatch", { items });
+        })
+        .then((data) => (data?.list ?? []) as IconItem[]);
+};

@@ -1,8 +1,52 @@
-import { useEffect, useState } from "react";
-import { DIALOG_SIZE_NORMAL, Dialog, Toast } from "minreact-ui";
+import { useEffect, useId, useState } from "react";
+import type { ReactNode } from "react";
+import { DIALOG_SIZE_NORMAL, Dialog, RangeInput, Toast } from "minreact-ui";
 import { api } from "@/api";
+import { useDialogForm } from "@/hooks/useDialogForm";
 import type { IconItem } from "@/types";
 import { AppIcon } from "@/components/common/AppIcon";
+
+const SIZE_MIN = 12;
+const SIZE_MAX = 96;
+const STROKE_MIN = 0.5;
+const STROKE_MAX = 8;
+const PRECISION_MIN = 0;
+const PRECISION_MAX = 4;
+
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
+/** 左右布局的表单行：左侧标签，右侧开关 / 滑块与说明 */
+const OptionRow = ({
+    label,
+    tip,
+    param,
+    toggle,
+}: {
+    label: string; // 行标签
+    tip?: string; // 行内补充说明
+    param?: ReactNode; // 滑块等参数控件
+    toggle?: { id: string; checked: boolean; onChange: (checked: boolean) => void }; // 启用开关
+}) => (
+    <div className="ui-form-item">
+        <label className="ui-form-item__label" htmlFor={toggle?.id}>
+            {label}
+        </label>
+        <div className="ui-form-item__content">
+            {toggle ? (
+                <input
+                    id={toggle.id}
+                    type="checkbox"
+                    checked={toggle.checked}
+                    onChange={(event) => toggle.onChange(event.target.checked)}
+                />
+            ) : (
+                <span className="ui-form-item__toggle-gap" aria-hidden="true" />
+            )}
+            {param}
+            {tip ? <span className="ui-form-item__tip">{tip}</span> : null}
+        </div>
+    </div>
+);
 
 /** 批量优化图标 */
 export const BatchOptimizeDialog = ({
@@ -19,7 +63,7 @@ export const BatchOptimizeDialog = ({
     onDone: (icons: IconItem[]) => void; // 完成回调
 }) => {
     const [sizeEnabled, setSizeEnabled] = useState(true);
-    const [size, setSize] = useState(defaultSize);
+    const [size, setSize] = useState(() => clamp(defaultSize, SIZE_MIN, SIZE_MAX));
     const [useCurrentColor, setUseCurrentColor] = useState(true);
     const [strokeEnabled, setStrokeEnabled] = useState(false);
     const [strokeWidth, setStrokeWidth] = useState(2);
@@ -27,9 +71,14 @@ export const BatchOptimizeDialog = ({
     const [removeFill, setRemoveFill] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    const sizeToggleId = useId();
+    const colorToggleId = useId();
+    const strokeToggleId = useId();
+    const fillToggleId = useId();
+
     useEffect(() => {
         if (open) {
-            setSize(defaultSize);
+            setSize(clamp(defaultSize, SIZE_MIN, SIZE_MAX));
             setSizeEnabled(true);
             setUseCurrentColor(true);
             setStrokeEnabled(false);
@@ -59,83 +108,93 @@ export const BatchOptimizeDialog = ({
         }
     };
 
+    const { formProps, submitProps } = useDialogForm(() => void submit());
+
     return (
         <Dialog open={open} setOpen={setOpen} width={DIALOG_SIZE_NORMAL} clickMaskerToClose>
             <Dialog.Title>批量优化（{iconIds.length} 个图标）</Dialog.Title>
             <Dialog.Content>
-                <div className="dialog-body">
-                    <div className="ui-form">
-                        <label className="ui-switch-row">
-                            <span>
-                                统一画布尺寸
-                                <span className="ui-field-tip">按比例缩放内容并居中到正方形画布</span>
-                            </span>
-                            <input type="checkbox" checked={sizeEnabled} onChange={(event) => setSizeEnabled(event.target.checked)} />
-                        </label>
-                        <input
-                            className="ui-input"
-                            type="number"
-                            min={12}
-                            max={256}
-                            disabled={!sizeEnabled}
-                            value={size}
-                            onChange={(event) => setSize(Number(event.target.value) || defaultSize)}
-                        />
-                        <div className="ui-divider" />
-                        <label className="ui-switch-row">
-                            <span>
-                                颜色统一为 currentColor
-                                <span className="ui-field-tip">固定颜色改为 currentColor，跟随文字颜色</span>
-                            </span>
-                            <input type="checkbox" checked={useCurrentColor} onChange={(event) => setUseCurrentColor(event.target.checked)} />
-                        </label>
-                        <label className="ui-switch-row">
-                            <span>
-                                统一线条粗细
-                                <span className="ui-field-tip">写入根节点 stroke-width，移除子节点上的值</span>
-                            </span>
-                            <input type="checkbox" checked={strokeEnabled} onChange={(event) => setStrokeEnabled(event.target.checked)} />
-                        </label>
-                        <input
-                            className="ui-input"
-                            type="number"
-                            min={0.5}
-                            max={8}
-                            step={0.25}
-                            disabled={!strokeEnabled}
-                            value={strokeWidth}
-                            onChange={(event) => setStrokeWidth(Number(event.target.value) || 2)}
-                        />
-                        <div className="ui-divider" />
-                        <div className="ui-field">
-                            <label>SVG 数字精度（小数位）</label>
-                            <input
-                                className="ui-input"
-                                type="number"
-                                min={0}
-                                max={4}
-                                value={precision}
-                                onChange={(event) => setPrecision(Math.max(0, Math.min(4, Number(event.target.value) || 0)))}
-                            />
+                <form {...formProps}>
+                    <div className="dialog-body optimize-dialog">
+                        <div className="ui-form-landscape">
+                            <div className="ui-form-group">
+                                <div className="ui-form-group__title">尺寸与精度</div>
+                                <div className="ui-form-group__content">
+                                    <OptionRow
+                                        label="画布尺寸"
+                                        tip="缩放并居中到正方形画布"
+                                        toggle={{ id: sizeToggleId, checked: sizeEnabled, onChange: setSizeEnabled }}
+                                        param={
+                                            <RangeInput
+                                                value={size}
+                                                min={SIZE_MIN}
+                                                max={SIZE_MAX}
+                                                step={4}
+                                                unit="px"
+                                                disabled={!sizeEnabled}
+                                                onInput={setSize}
+                                            />
+                                        }
+                                    />
+                                    <OptionRow
+                                        label="数字精度"
+                                        tip="坐标保留的小数位"
+                                        param={
+                                            <RangeInput
+                                                value={precision}
+                                                min={PRECISION_MIN}
+                                                max={PRECISION_MAX}
+                                                step={1}
+                                                unit="位"
+                                                onInput={setPrecision}
+                                            />
+                                        }
+                                    />
+                                </div>
+                            </div>
+                            <div className="ui-form-group">
+                                <div className="ui-form-group__title">颜色与线条</div>
+                                <div className="ui-form-group__content">
+                                    <OptionRow
+                                        label="颜色"
+                                        tip="统一为 currentColor"
+                                        toggle={{ id: colorToggleId, checked: useCurrentColor, onChange: setUseCurrentColor }}
+                                    />
+                                    <OptionRow
+                                        label="线条粗细"
+                                        tip="写入根节点 stroke-width"
+                                        toggle={{ id: strokeToggleId, checked: strokeEnabled, onChange: setStrokeEnabled }}
+                                        param={
+                                            <RangeInput
+                                                value={strokeWidth}
+                                                min={STROKE_MIN}
+                                                max={STROKE_MAX}
+                                                step={0.25}
+                                                precision={2}
+                                                disabled={!strokeEnabled}
+                                                onInput={setStrokeWidth}
+                                            />
+                                        }
+                                    />
+                                    <OptionRow
+                                        label="移除填充"
+                                        tip="适合纯线性图标"
+                                        toggle={{ id: fillToggleId, checked: removeFill, onChange: setRemoveFill }}
+                                    />
+                                </div>
+                            </div>
                         </div>
-                        <label className="ui-switch-row">
-                            <span>
-                                移除填充（fill="none"）
-                                <span className="ui-field-tip">适合纯线性图标</span>
-                            </span>
-                            <input type="checkbox" checked={removeFill} onChange={(event) => setRemoveFill(event.target.checked)} />
-                        </label>
+                        <div className="ui-alert">
+                            <AppIcon name="warning" /> 将直接修改所选图标源码，建议先导出备份。
+                        </div>
                     </div>
-                    <div className="ui-alert">
-                        <AppIcon name="warning" /> 优化会直接修改所选图标的 SVG 源码，建议先导出备份。
-                    </div>
-                </div>
+                </form>
             </Dialog.Content>
             <Dialog.Action align="right">
                 <button className="ui-btn" type="button" onClick={() => setOpen(false)}>
                     取消
                 </button>
-                <button className="ui-btn primary" type="button" disabled={saving} onClick={() => void submit()}>
+                <button className="ui-btn primary" {...submitProps} disabled={saving}>
                     {saving ? "优化中..." : "开始优化"}
                 </button>
             </Dialog.Action>
