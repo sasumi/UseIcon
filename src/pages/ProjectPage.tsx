@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, DropdownMenu, Select, Toast } from "minreact-ui";
+import { Dialog, DropdownMenu, EmptyHolder, LoadingHolder, Select, Toast } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import { api } from "@/api";
 import { PROJECT_SORT_STORAGE_PREFIX } from "@/config";
@@ -309,7 +309,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 {sidebar}
                 <div className="content-panel padded">
                     {listLoading ? (
-                        <div className="ui-loading">正在加载项目...</div>
+                        <LoadingHolder text="正在加载项目..." />
                     ) : (
                         <EmptyState text={user ? "还没有项目，创建一个开始管理代码图标" : "登录后即可创建与管理项目"}>
                             {user ? (
@@ -338,7 +338,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
             <>
                 {sidebar}
                 <div className="content-panel padded">
-                    <EmptyState text={error} icon="warning">
+                    <EmptyState text={error} variant="error">
                         <button className="ui-btn" type="button" onClick={() => navigate("/projects")}>
                             返回项目列表
                         </button>
@@ -354,7 +354,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
             <>
                 {sidebar}
                 <div className="content-panel padded">
-                    <div className="ui-loading">正在加载项目...</div>
+                    <LoadingHolder text="正在加载项目..." />
                 </div>
                 {createDialog}
             </>
@@ -366,7 +366,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
             <>
                 {sidebar}
                 <div className="content-panel padded">
-                    <EmptyState text="你没有访问该项目的权限（内部项目仅成员可见）" icon="lock" />
+                    <EmptyState text="你没有访问该项目的权限（内部项目仅成员可见）" />
                 </div>
                 {createDialog}
             </>
@@ -505,7 +505,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                         )}
                     </EmptyState>
                 ) : filtered.length === 0 ? (
-                    <EmptyState text="没有匹配当前筛选条件的图标" icon="search" />
+                    <EmptyState text="没有匹配当前筛选条件的图标" />
                 ) : (
                     <ul className={`icon-grid ${sortMode === "custom" ? "is-sortable" : ""}`}>
                         {filtered.map((icon) => (
@@ -784,9 +784,15 @@ const ProjectList = ({ activeId, onCreate }: { activeId: string; onCreate: () =>
                         </div>
                     ))}
                 </div>
-                {filtered.length === 0 && <p className="ui-note side-tip">没有匹配的项目</p>}
+                {filtered.length === 0 && <EmptyHolder text="没有匹配的项目" />}
                 <div ref={sentinelRef} className="project-list__more">
-                    {projectLoadingMore ? "加载中..." : !projectHasMore && projectTotal > 0 ? `共 ${projectTotal} 个项目` : ""}
+                    {projectLoadingMore ? (
+                        <LoadingHolder text="加载中..." />
+                    ) : !projectHasMore && projectTotal > 0 ? (
+                        `共 ${projectTotal} 个项目`
+                    ) : (
+                        ""
+                    )}
                 </div>
             </div>
         </>

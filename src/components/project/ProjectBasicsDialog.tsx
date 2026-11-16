@@ -54,16 +54,18 @@ export const ProjectBasicsDialog = ({
             title: "危险操作：删除项目",
             message: `删除后「${project.name}」及其 ${project.members.length} 位成员、全部图标会一并清除，且无法恢复。确认继续删除吗？`,
             confirmText: "删除项目",
-        }).then(() => {
-            void api.projects
-                .deleteProject(project.id)
-                .then(() => {
-                    Toast.showSuccess("项目已删除");
-                    setOpen(false);
-                    onDeleted();
-                })
-                .catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "删除失败"));
-        }).catch(() => undefined);
+        })
+            .then(() => {
+                void api.projects
+                    .deleteProject(project.id)
+                    .then(() => {
+                        Toast.showSuccess("项目已删除");
+                        setOpen(false);
+                        onDeleted();
+                    })
+                    .catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "删除失败"));
+            })
+            .catch(() => undefined);
     };
 
     const { formProps, submitProps } = useDialogForm(() => void save());
@@ -76,12 +78,16 @@ export const ProjectBasicsDialog = ({
                     <div className="dialog-body">
                         <div className="ui-form">
                             <div className="ui-field">
-                                <label>项目名称</label>
-                                <input className="ui-input" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+                                <input
+                                    className="ui-input"
+                                    placeholder="项目名称"
+                                    value={draft.name}
+                                    onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                                />
                             </div>
                             <div className="ui-field">
-                                <label>项目描述</label>
                                 <textarea
+                                    placeholder="项目描述"
                                     className="ui-textarea"
                                     value={draft.description}
                                     onChange={(event) => setDraft({ ...draft, description: event.target.value })}

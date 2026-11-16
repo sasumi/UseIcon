@@ -141,14 +141,19 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
+}
 
-    &__input {
-        width: 2.2rem;
-        height: 1.6rem;
-        padding: 0.1rem;
-        border: 1px solid var(--color-border-strong);
-        border-radius: var(--element-radius);
-        background: var(--color-background);
-        cursor: pointer;
+// 图标网格滚动加载状态（加载中 / 已全部加载）
+.icon-grid-more {
+    min-height: 1.2rem;
+    padding: 0.35rem 0.2rem 0.1rem;
+    font-size: 0.7rem;
+    color: var(--color-secondary);
+    text-align: center;
+
+    .minreactui-statewidget-loading {
+        padding: 0;
+        font-size: inherit;
+        color: inherit;
     }
 }

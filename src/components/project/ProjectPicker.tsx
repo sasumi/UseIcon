@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Menu, Popover } from "minreact-ui";
+import { EmptyHolder, LoadingHolder, Menu, Popover } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import { api } from "@/api";
 import { useAuthStore } from "@/store/authStore";
@@ -114,9 +114,9 @@ export const ProjectPicker = ({
                 </div>
                 <div className="project-picker__list">
                     {loading ? (
-                        <p className="project-picker__empty">正在加载项目...</p>
+                        <LoadingHolder text="正在加载项目..." />
                     ) : items.length === 0 ? (
-                        <p className="project-picker__empty">{keyword.trim() ? "没有匹配的项目" : emptyText}</p>
+                        <EmptyHolder text={keyword.trim() ? "没有匹配的项目" : emptyText} />
                     ) : (
                         <Menu items={items} onChange={(value) => selectProject(String(value))} />
                     )}

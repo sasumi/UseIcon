@@ -1,4 +1,4 @@
-﻿@use './mixins' as *;
+@use './mixins' as *;
 
 // ---------- 项目头部 ----------
 .project-header {
@@ -365,6 +365,19 @@
     font-size: 0.7rem;
     color: var(--color-secondary);
     text-align: center;
+
+    .minreactui-statewidget-loading {
+        padding: 0;
+        font-size: inherit;
+        color: inherit;
+    }
+}
+
+// 侧栏筛不到项目时的空数据提示（EmptyHolder）
+.side-panel__body > .minreactui-statewidget-empty {
+    padding: 0.4rem 0.35rem;
+    font-size: 0.75rem;
+    color: var(--color-secondary);
 }
 
 // ---------- 项目设置 ----------
@@ -746,10 +759,11 @@
 .project-picker__list {
     min-height: 0;
     overflow: auto;
-}
 
-.project-picker__empty {
-    padding: 0.4rem 0.5rem;
-    font-size: 0.8rem;
-    color: var(--color-secondary);
+    .minreactui-statewidget-loading,
+    .minreactui-statewidget-empty {
+        padding: 0.4rem 0.5rem;
+        font-size: 0.8rem;
+        color: var(--color-secondary);
+    }
 }

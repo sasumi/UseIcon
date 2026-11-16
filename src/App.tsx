@@ -9,9 +9,10 @@ import { ProjectPage } from "@/pages/ProjectPage";
 import { UpdatesPage } from "@/pages/UpdatesPage";
 import { navigate, useRoute } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
-import { useLibraryStore } from "@/store/libraryStore";
 import { openLoginDialog } from "@/store/loginDialogStore";
 import { useProjectStore } from "@/store/projectStore";
+import { EmptyState } from "@/components/common/EmptyState";
+import { LoadingHolder } from "minreact-ui";
 
 /** 应用入口与路由分发 */
 const App = () => {
@@ -26,10 +27,9 @@ const App = () => {
         void restore();
     }, [restore]);
 
-    // 账号切换（含退出登录）后清空项目缓存，并重新拉取公共库（维护权限随账号变化）
+    // 账号切换（含退出登录）后清空项目缓存；公共库与收藏由各自页面 / 外壳重新拉取
     useEffect(() => {
         useProjectStore.getState().reset();
-        void useLibraryStore.getState().fetchAll();
     }, [accountId]);
 
     // 需要登录的页面在游客访问时弹出登录对话框，不再整页跳转
@@ -61,7 +61,7 @@ const App = () => {
         return (
             <div className="boot-screen">
                 <span className="login-brand__logo">UI</span>
-                <span>正在恢复登录态...</span>
+                <LoadingHolder text="加载中..." />
             </div>
         );
     }
@@ -75,12 +75,11 @@ const App = () => {
             {route.name === "updates" && <UpdatesPage />}
             {route.name === "notfound" && (
                 <div className="content-panel padded">
-                    <div className="ui-empty">
-                        <span>页面不存在</span>
+                    <EmptyState text="页面不存在">
                         <button className="ui-btn" type="button" onClick={() => navigate("/library")}>
                             返回公共库
                         </button>
-                    </div>
+                    </EmptyState>
                 </div>
             )}
         </AppShell>

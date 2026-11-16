@@ -96,7 +96,7 @@ export const CartDrawer = () => {
 
                 <div className="cart-drawer__body">
                     {items.length === 0 ? (
-                        <EmptyState text="采集车是空的：在公共库或项目图标上点击「采集」即可临时收藏" icon="cart" />
+                        <EmptyState text="采集车是空的：在公共库或项目图标上点击「采集」即可临时收藏" />
                     ) : (
                         <ul className="cart-list">
                             {items.map((item) => (

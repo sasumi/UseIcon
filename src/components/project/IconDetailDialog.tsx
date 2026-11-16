@@ -6,6 +6,7 @@ import { copyText, downloadBlob, downloadSvg } from "@/utils/download";
 import { svgToPngBlob } from "@/utils/image";
 import { applyIconSize, detectSvgPaint, renderIconCode, setSvgColor, setSvgFillColor, setSvgScale, setSvgStrokeWidth } from "@/utils/svg";
 import { AppIcon } from "@/components/common/AppIcon";
+import { ColorPicker } from "@/components/common/ColorPicker";
 import { SvgPreview } from "@/components/common/SvgPreview";
 import { TagEditor } from "@/components/common/TagEditor";
 import { SvgCodeDialog } from "@/components/project/SvgCodeDialog";
@@ -180,12 +181,11 @@ export const IconDetailDialog = ({
                         </div>
                         <div className="detail-meta">
                             <div className="detail-field">
-                                <label>类名（css）</label>
                                 <InlineTextEditor
                                     value={className}
                                     required
                                     readonly={!canEdit}
-                                    placeholder="--"
+                                    placeholder="类名（css）"
                                     saveHandler={async (value) => {
                                         const next = value.trim();
                                         if (next) {
@@ -195,7 +195,6 @@ export const IconDetailDialog = ({
                                 />
                             </div>
                             <div className="detail-field">
-                                <label>标签</label>
                                 <TagEditor value={tags} onChange={setTags} disabled={!canEdit} />
                             </div>
 
@@ -225,12 +224,11 @@ export const IconDetailDialog = ({
                                     )}
                                     <div className="detail-appearance__row">
                                         <label>图标颜色</label>
-                                        <input
-                                            className="display-color__input"
-                                            type="color"
-                                            value={color || "#1f1f1f"}
+                                        <ColorPicker
+                                            value={color}
+                                            fallback="#1f1f1f"
                                             title={color || "默认跟随文字色"}
-                                            onChange={(event) => setColor(event.target.value)}
+                                            onChange={setColor}
                                         />
                                         <span className="detail-appearance__value">{color || "currentColor"}</span>
                                         {color && (
@@ -242,12 +240,11 @@ export const IconDetailDialog = ({
                                     {paint.filled && (
                                         <div className="detail-appearance__row">
                                             <label>填充颜色</label>
-                                            <input
-                                                className="display-color__input"
-                                                type="color"
-                                                value={fillColor || "#1f1f1f"}
+                                            <ColorPicker
+                                                value={fillColor}
+                                                fallback="#1f1f1f"
                                                 title={fillColor || "默认跟随文字色"}
-                                                onChange={(event) => setFillColor(event.target.value)}
+                                                onChange={setFillColor}
                                             />
                                             <span className="detail-appearance__value">{fillColor || "currentColor"}</span>
                                             {fillColor && (
@@ -281,7 +278,6 @@ export const IconDetailDialog = ({
                     </div>
 
                     <div className="detail-code">
-                        <span className="ui-section-title">使用代码（项目模板）</span>
                         <div className="toolbar">
                             {canEdit && (
                                 <button className="ui-btn small button-tonal" type="button" onClick={() => setCodeOpen(true)}>

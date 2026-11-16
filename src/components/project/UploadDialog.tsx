@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Checkbox, DIALOG_SIZE_LARGE, Dialog, InlineTextEditor, Select, Toast } from "minreact-ui";
+import { Checkbox, Dialog, InlineTextEditor, LoadingHolder, Select, Toast } from "minreact-ui";
 import { api } from "@/api";
 import type { IconCandidate } from "@/types";
 import { parseIconfontSource, parseSvgCollection } from "@/utils/iconfont";
@@ -17,6 +17,9 @@ const ACCEPT = ".svg,image/svg+xml,image/png,image/jpeg,image/webp,image/gif,.js
 
 const TEXT_EXTENSIONS = ["js", "json", "txt", "css", "html", "htm"];
 const ICONFONT_HINT = /<symbol|<glyph|<font[\s>]|@font-face/i;
+
+/** 对话框宽度（比 minreact-ui 的 LARGE 略窄，图标网格仍可排 5 列） */
+const DIALOG_WIDTH = "50em";
 
 /** 图标上传 / 导入对话框：统一入口，自动识别 SVG / 图片 / iconfont 文件 */
 export const UploadDialog = ({
@@ -187,7 +190,7 @@ export const UploadDialog = ({
     };
 
     return (
-        <Dialog open={open} setOpen={setOpen} width={DIALOG_SIZE_LARGE} clickMaskerToClose>
+        <Dialog open={open} setOpen={setOpen} width={DIALOG_WIDTH} clickMaskerToClose>
             <Dialog.Title>{target === "library" ? "上传到公共图标库" : "上传 / 导入图标"}</Dialog.Title>
             <Dialog.Content>
                 <div className="dialog-body">
@@ -216,7 +219,7 @@ export const UploadDialog = ({
                         </div>
                     </form>
 
-                    {busy && <div className="ui-loading">正在解析文件...</div>}
+                    {busy && <LoadingHolder text="正在解析文件..." />}
 
                     {candidates.length > 0 && (
                         <div className="upload-candidates">

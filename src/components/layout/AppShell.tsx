@@ -8,6 +8,7 @@ import { useLoginDialogStore } from "@/store/loginDialogStore";
 import { APP_VERSION } from "@/updates";
 import { LoginDialog } from "@/components/account/LoginDialog";
 import { UserProfileDialog } from "@/components/account/UserProfileDialog";
+import { DonateDialog } from "@/components/account/DonateDialog";
 import { AppIcon } from "@/components/common/AppIcon";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { CartDrawer, CartFab } from "@/components/cart/CartDrawer";
@@ -27,9 +28,10 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
     const setLoginOpen = useLoginDialogStore((state) => state.setOpen);
     const [profileOpen, setProfileOpen] = useState(false);
     const [optionsOpen, setOptionsOpen] = useState(false);
+    const [donateOpen, setDonateOpen] = useState(false);
 
     useEffect(() => {
-        void useLibraryStore.getState().fetchAll();
+        void useLibraryStore.getState().fetchFavorites();
     }, [user?.id]);
 
     const activeKey = route.name === "project" || route.name === "extMode" ? "projects" : route.name;
@@ -91,6 +93,16 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
                     </span>
                 ))}
                 <div className="spacer" />
+                <span
+                    className="activity-item activity-donate"
+                    title="打赏"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDonateOpen(true)}
+                    onKeyDown={(event) => event.key === "Enter" && setDonateOpen(true)}
+                >
+                    <AppIcon name="heart" />
+                </span>
                 <DropdownMenu
                     items={userMenu}
                     onChange={handleUserMenu}
@@ -114,6 +126,7 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
             <CartDrawer />
             <UserProfileDialog open={profileOpen} setOpen={setProfileOpen} />
             <OptionsDialog open={optionsOpen} setOpen={setOptionsOpen} />
+            <DonateDialog open={donateOpen} setOpen={setDonateOpen} />
             <LoginDialog />
         </div>
     );

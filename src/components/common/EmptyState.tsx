@@ -1,19 +1,18 @@
 import type { ReactNode } from "react";
-import { AppIcon } from "./AppIcon";
+import { EmptyHolder, ErrorHolder } from "minreact-ui";
 
-/** 空状态占位 */
+/** 空数据 / 错误占位：统一使用 minreact-ui 的 EmptyHolder / ErrorHolder，可选操作区 */
 export const EmptyState = ({
     text,
-    icon = "box",
+    variant = "empty",
     children,
 }: {
     text: string; // 文案
-    icon?: string; // 图标名
+    variant?: "empty" | "error"; // 占位类型：空数据 / 错误
     children?: ReactNode; // 操作区
 }) => (
     <div className="ui-empty">
-        <AppIcon name={icon} className="ui-empty-icon" />
-        <span>{text}</span>
+        {variant === "error" ? <ErrorHolder error={text} /> : <EmptyHolder text={text} />}
         {children}
     </div>
 );

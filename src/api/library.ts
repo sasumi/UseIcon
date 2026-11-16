@@ -1,4 +1,4 @@
-import type { IconInput, IconOptimizeOptions, LibraryIcon } from "@/types";
+import type { IconInput, IconOptimizeOptions, LibraryCategoryCount, LibraryIcon, PageResult } from "@/types";
 import { normalizeSvg, optimizeSvg, sanitizeIconName } from "@/utils/svg";
 import { ApiError, iconGetJSON, iconPostJSON } from "./http";
 
@@ -9,6 +9,12 @@ const CREATE_CHUNK_SIZE = 100;
 export interface LibraryResult {
     icons: LibraryIcon[]; // 公共库图标
     canEdit: boolean; // 当前用户是否可维护公共库
+}
+
+/** 公共库分页结果 */
+export interface LibraryPageResult extends PageResult<LibraryIcon> {
+    canEdit: boolean; // 当前用户是否可维护公共库
+    categories: LibraryCategoryCount[]; // 全库分类统计（不受筛选影响）
 }
 
 const cleanTags = (tags: string[] | undefined): string[] =>
@@ -22,12 +28,49 @@ export interface LibraryIconPatch {
     svg?: string; // SVG 源码
 }
 
-/** 公共库图标列表（含当前用户是否可维护） */
-export const listLibraryIcons = (): Promise<LibraryResult> =>
-    iconGetJSON("library/getList").then((data) => ({
-        icons: (data?.list ?? []) as LibraryIcon[],
-        canEdit: Boolean(data?.canEdit),
-    }));
+/** 一次取全量时的分页大小（与后台 page_size 上限一致） */
+const FULL_LIST_PAGE_SIZE = 200;
+
+/** 公共库图标全量列表（含当前用户是否可维护，供需要一次取全量的场景使用） */
+export const listLibraryIcons = async (): Promise<LibraryResult> => {
+    const icons: LibraryIcon[] = [];
+    let canEdit = false;
+    for (let page = 1; ; page++) {
+        const data = await iconGetJSON("library/getList", { page, page_size: FULL_LIST_PAGE_SIZE });
+        const list = (data?.list ?? []) as LibraryIcon[];
+        icons.push(...list);
+        canEdit = Boolean(data?.canEdit);
+        if (list.length === 0 || icons.length >= Number(data?.total ?? 0)) {
+            break;
+        }
+    }
+    return { icons, canEdit };
+};
+
+/** 分页加载公共库图标（主列表滚动加载） */
+export const listLibraryIconsPaged = (
+    options: { offset?: number; limit?: number; keyword?: string; category?: string } = {},
+): Promise<LibraryPageResult> => {
+    const offset = Math.max(0, Math.floor(options.offset ?? 0));
+    const limit = Math.max(1, Math.floor(options.limit ?? 60));
+    const page = Math.floor(offset / limit) + 1;
+    return iconGetJSON("library/getList", {
+        page,
+        page_size: limit,
+        keyword: options.keyword?.trim() || undefined,
+        category: options.category?.trim() || undefined,
+    }).then((data) => {
+        const items = (data?.list ?? []) as LibraryIcon[];
+        const total = Number(data?.total ?? 0);
+        return {
+            items,
+            total,
+            hasMore: offset + items.length < total,
+            canEdit: Boolean(data?.canEdit),
+            categories: (data?.categories ?? []) as LibraryCategoryCount[],
+        };
+    });
+};
 
 /** 批量新增公共库图标（类名由后台全库去重） */
 export const createLibraryIcons = async (inputs: IconInput[]): Promise<LibraryIcon[]> => {

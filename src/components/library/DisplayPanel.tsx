@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Popover } from "minreact-ui";
 import { useDisplayStore } from "@/store/displayStore";
 import { AppIcon } from "@/components/common/AppIcon";
+import { ColorPicker } from "@/components/common/ColorPicker";
 
 const SIZE_RANGE = { min: 12, max: 64, step: 2 };
 const PADDING_RANGE = { min: 0, max: 28, step: 1 };
@@ -30,13 +31,7 @@ const ColorField = ({
     onChange: (value: string) => void;
 }) => (
     <div className="display-color">
-        <input
-            className="display-color__input"
-            type="color"
-            value={value || fallback}
-            title={value || fallbackText}
-            onChange={(event) => onChange(event.target.value)}
-        />
+        <ColorPicker value={value} fallback={fallback} title={value || fallbackText} onChange={onChange} />
         {value && (
             <button className="ui-btn small button-tonal" type="button" onClick={() => onChange("")}>
                 {fallbackText}

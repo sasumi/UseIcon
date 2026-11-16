@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, DropdownMenu, MenuItemDivider, Select, Toast } from "minreact-ui";
+import { Dialog, DropdownMenu, LoadingHolder, MenuItemDivider, Select, Toast } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import { CODE_TEMPLATE_PRESETS, DEFAULT_CODE_TEMPLATE, EXTMODE_CODE_HEIGHT_KEY, PROJECT_SORT_STORAGE_PREFIX } from "@/config";
 import { navigate, extModePath, projectPath } from "@/router/useRoute";
@@ -270,7 +270,7 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
     if (!ready) {
         return (
             <div className="extmode-app">
-                <div className="ui-loading">正在恢复登录态...</div>
+                <LoadingHolder text="正在恢复登录态..." />
             </div>
         );
     }
@@ -285,7 +285,7 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
                     <ThemeToggle />
                 </header>
                 <div className="extmode-login">
-                    <EmptyState text="拓展模式需要登录后使用：登录即可读取你的项目与图标" icon="lock">
+                    <EmptyState text="拓展模式需要登录后使用：登录即可读取你的项目与图标">
                         <button className="ui-btn primary" type="button" onClick={() => openLoginDialog()}>
                             去登录
                         </button>
@@ -299,7 +299,7 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
     if (error) {
         return (
             <div className="extmode-app">
-                <EmptyState text={error} icon="warning" />
+                <EmptyState text={error} variant="error" />
             </div>
         );
     }
@@ -308,7 +308,7 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
         // 切换项目时详情尚未返回，先按加载中处理，避免短暂显示上一个项目
         return (
             <div className="extmode-app">
-                {loading || project ? <div className="ui-loading">加载中...</div> : <EmptyState text="项目不存在" />}
+                {loading || project ? <LoadingHolder text="加载中..." /> : <EmptyState text="项目不存在" />}
             </div>
         );
     }
@@ -316,7 +316,7 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
     if (!access.canView) {
         return (
             <div className="extmode-app">
-                <EmptyState text="无权访问该项目" icon="lock" />
+                <EmptyState text="无权访问该项目" />
             </div>
         );
     }
@@ -385,7 +385,7 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
                 {icons.length === 0 ? (
                     <EmptyState text="项目里还没有图标" />
                 ) : filtered.length === 0 ? (
-                    <EmptyState text="没有匹配的图标" icon="search" />
+                    <EmptyState text="没有匹配的图标" />
                 ) : (
                     <ul className="extmode-grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${Math.max(74, previewSize + 20)}px, 1fr))` }}>
                         {filtered.map((icon) => (

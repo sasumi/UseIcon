@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { DIALOG_SIZE_XLARGE, Dialog, Toast } from "minreact-ui";
+import { DIALOG_SIZE_XLARGE, Dialog, LoadingHolder, Toast } from "minreact-ui";
 import { api } from "@/api";
 import { LIBRARY_CATEGORIES } from "@/data/library";
 import { useLibraryStore } from "@/store/libraryStore";
+import type { LibraryIcon } from "@/types";
 import { AppIcon } from "@/components/common/AppIcon";
+import { EmptyState } from "@/components/common/EmptyState";
 import { SvgPreview } from "@/components/common/SvgPreview";
 
 /** 从公共库挑选图标加入项目 */
@@ -18,9 +20,9 @@ export const PickLibraryDialog = ({
     projectId: string; // 目标项目
     onAdded: () => void; // 添加完成回调
 }) => {
-    const icons = useLibraryStore((state) => state.icons);
     const favorites = useLibraryStore((state) => state.favorites);
-    const fetchAll = useLibraryStore((state) => state.fetchAll);
+    const [icons, setIcons] = useState<LibraryIcon[]>([]);
+    const [loading, setLoading] = useState(false);
     const [keyword, setKeyword] = useState("");
     const [category, setCategory] = useState("");
     const [onlyFavorite, setOnlyFavorite] = useState(false);
@@ -28,14 +30,37 @@ export const PickLibraryDialog = ({
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        if (open) {
-            void fetchAll();
-            setSelected([]);
-            setKeyword("");
-            setCategory("");
-            setOnlyFavorite(false);
+        if (!open) {
+            return;
         }
-    }, [open, fetchAll]);
+        setSelected([]);
+        setKeyword("");
+        setCategory("");
+        setOnlyFavorite(false);
+        // 挑选需要全量数据（本地筛选跨分类搜索），打开时取一次完整列表
+        let alive = true;
+        setLoading(true);
+        api.library
+            .listLibraryIcons()
+            .then((library) => {
+                if (alive) {
+                    setIcons(library.icons);
+                }
+            })
+            .catch((error: unknown) => {
+                if (alive) {
+                    Toast.showError(error instanceof Error ? error.message : "公共库加载失败");
+                }
+            })
+            .finally(() => {
+                if (alive) {
+                    setLoading(false);
+                }
+            });
+        return () => {
+            alive = false;
+        };
+    }, [open]);
 
     const filtered = useMemo(() => {
         const query = keyword.trim().toLowerCase();
@@ -127,7 +152,8 @@ export const PickLibraryDialog = ({
                             </li>
                         ))}
                     </ul>
-                    {filtered.length === 0 && <div className="ui-empty">没有匹配的图标</div>}
+                    {loading ? <LoadingHolder text="正在加载公共图标库..." /> : null}
+                    {filtered.length === 0 && !loading && <EmptyState text="没有匹配的图标" />}
                 </div>
             </Dialog.Content>
             <Dialog.Action align="right">

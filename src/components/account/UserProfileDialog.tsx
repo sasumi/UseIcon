@@ -3,6 +3,7 @@ import { Dialog, FilePicker, InlineTextEditor, Toast } from "minreact-ui";
 import { useAuthStore } from "@/store/authStore";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { AppIcon } from "@/components/common/AppIcon";
+import { EmptyState } from "@/components/common/EmptyState";
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
@@ -123,7 +124,7 @@ export const UserProfileDialog = ({ open, setOpen }: { open: boolean; setOpen: (
                         </div>
                     </div>
                 ) : (
-                    <div className="ui-empty">尚未登录</div>
+                    <EmptyState text="尚未登录" />
                 )}
             </Dialog.Content>
         </Dialog>

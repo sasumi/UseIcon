@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { DIALOG_SIZE_SMALL, Dialog, DropdownMenu, Select, Toast } from "minreact-ui";
+import { DIALOG_SIZE_SMALL, Dialog, DropdownMenu, Toast } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import type { FavoriteIcon, IconItem } from "@/types";
 import { DEFAULT_ICON_SIZE, FAVORITES_SORT_STORAGE_KEY } from "@/config";
@@ -45,7 +45,7 @@ const readSortMode = (): FavoritesSortMode => {
 export const FavoritesPage = () => {
     const user = useAuthStore((state) => state.user);
     const favorites = useLibraryStore((state) => state.favorites);
-    const refreshFavorites = useLibraryStore((state) => state.refreshFavorites);
+    const fetchFavorites = useLibraryStore((state) => state.fetchFavorites);
     const removeFavorite = useLibraryStore((state) => state.removeFavorite);
     const toggleCart = useCartStore((state) => state.toggle);
     const cartItems = useCartStore((state) => state.items);
@@ -58,11 +58,28 @@ export const FavoritesPage = () => {
 
     useEffect(() => {
         if (user) {
-            void refreshFavorites();
+            void fetchFavorites();
         }
-    }, [user, refreshFavorites]);
+    }, [user, fetchFavorites]);
 
     const tags = useMemo(() => collectFavoriteTags(favorites), [favorites]);
+
+    const tagCounts = useMemo(() => {
+        const map: Record<string, number> = {};
+        favorites.forEach((item) => {
+            item.tags.forEach((itemTag) => {
+                map[itemTag] = (map[itemTag] || 0) + 1;
+            });
+        });
+        return map;
+    }, [favorites]);
+
+    // 标签被删掉后回到全部，避免筛选条件悬空
+    useEffect(() => {
+        if (tag && !tags.includes(tag)) {
+            setTag("");
+        }
+    }, [tag, tags]);
 
     const filtered = useMemo(() => {
         const query = keyword.trim().toLowerCase();
@@ -154,7 +171,7 @@ export const FavoritesPage = () => {
     if (!user) {
         return (
             <div className="content-panel padded">
-                <EmptyState text="登录后即可看到你的收藏" icon="star">
+                <EmptyState text="登录后即可看到你的收藏">
                     <button className="ui-btn primary" type="button" onClick={() => openLoginDialog()}>
                         去登录
                     </button>
@@ -175,9 +192,16 @@ export const FavoritesPage = () => {
                     <div className="nav-list">
                         <div className={`nav-item ${tag === "" ? "active" : ""}`} onClick={() => setTag("")}>
                             <AppIcon name="star" />
-                            全部收藏
+                            全部
                             <span className="nav-item__count">{favorites.length}</span>
                         </div>
+                        {tags.map((item) => (
+                            <div key={item} className={`nav-item ${tag === item ? "active" : ""}`} onClick={() => setTag(item)}>
+                                <AppIcon name="tag" />
+                                <span className="ellipsis">{item}</span>
+                                <span className="nav-item__count">{tagCounts[item] || 0}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </SidePanel>
@@ -223,30 +247,17 @@ export const FavoritesPage = () => {
                             </button>
                         }
                     />
-                    {tags.length > 0 && (
-                        <Select
-                            key={tag}
-                            items={[
-                                { value: "", label: "全部标签", icon: <AppIcon name="layers" /> },
-                                ...tags.map((item) => ({ value: item, label: item, icon: <AppIcon name="tag" /> })),
-                            ]}
-                            value={tag}
-                            placeholder="标签"
-                            onChange={(value) => setTag(typeof value === "string" ? value : "")}
-                            triggerClassName={`ui-btn small button-tonal project-toolbar__tag ${tag ? "has-value" : ""}`}
-                        />
-                    )}
                     <DisplayControl />
                 </div>
 
                 {favorites.length === 0 ? (
-                    <EmptyState text="还没有收藏：在公共库或项目图标上点击「收藏」即可" icon="star">
+                    <EmptyState text="还没有收藏：在公共库或项目图标上点击「收藏」即可">
                         <button className="ui-btn primary" type="button" onClick={() => navigate("/library")}>
                             去公共库看看
                         </button>
                     </EmptyState>
                 ) : filtered.length === 0 ? (
-                    <EmptyState text="没有匹配当前筛选的收藏" icon="search" />
+                    <EmptyState text="没有匹配当前筛选的收藏" />
                 ) : (
                     <ul className="icon-grid">
                         {filtered.map((favorite) => (
@@ -278,7 +289,7 @@ export const FavoritesPage = () => {
                 open={Boolean(editing)}
                 setOpen={(open) => !open && setEditing(null)}
                 onSaved={() => {
-                    void refreshFavorites();
+                    void fetchFavorites();
                 }}
             />
         </>

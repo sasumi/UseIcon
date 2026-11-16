@@ -1,12 +1,5 @@
-import type { Project, ProjectRole, ProjectVisibility } from "@/types";
+import type { PageResult, Project, ProjectRole, ProjectVisibility } from "@/types";
 import { iconGetJSON, iconPostJSON } from "./http";
-
-/** 分页结果 */
-export interface PageResult<T> {
-    items: T[]; // 当前页数据
-    total: number; // 总条数
-    hasMore: boolean; // 是否还有下一页
-}
 
 /** 项目列表（当前用户可见的项目，按更新时间倒序） */
 export const listProjects = (): Promise<Project[]> =>

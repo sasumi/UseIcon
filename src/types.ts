@@ -57,6 +57,19 @@ export interface Project {
     updatedAt: number; // 更新时间戳
 }
 
+/** 分页结果 */
+export interface PageResult<T> {
+    items: T[]; // 当前页数据
+    total: number; // 总条数
+    hasMore: boolean; // 是否还有下一页
+}
+
+/** 公共库分类统计 */
+export interface LibraryCategoryCount {
+    name: string; // 分类名
+    count: number; // 该分类的图标数量
+}
+
 /** 项目图标 */
 export interface IconItem {
     id: string; // 图标 ID
