@@ -6,6 +6,7 @@ import { LIBRARY_SORT_STORAGE_KEY } from "@/config";
 import { sortLibraryCategories } from "@/data/library";
 import { useClearOnBlankClick } from "@/hooks/useClearOnBlankClick";
 import { useDragSelect } from "@/hooks/useDragSelect";
+import { useIconPhashes } from "@/hooks/useIconPhashes";
 import { useTimedTip } from "@/hooks/useTimedTip";
 import { useAuthStore } from "@/store/authStore";
 import { openLoginDialog } from "@/store/loginDialogStore";
@@ -13,6 +14,7 @@ import { cartItemFromLibrary, useCartStore } from "@/store/cartStore";
 import { useLibraryStore } from "@/store/libraryStore";
 import type { LibraryIcon } from "@/types";
 import { copyText, downloadPng } from "@/utils/download";
+import { sortIconsBySimilarity } from "@/utils/iconMatcher";
 import { AppIcon } from "@/components/common/AppIcon";
 import { EmptyState } from "@/components/common/EmptyState";
 import { SelectAllToggle } from "@/components/common/SelectAllToggle";
@@ -26,18 +28,20 @@ import { BatchRenameDialog } from "@/components/project/BatchRenameDialog";
 import { UploadDialog } from "@/components/project/UploadDialog";
 import { DisplayControl } from "@/components/library/DisplayPanel";
 
-type LibrarySortMode = "default" | "name-asc" | "name-desc";
+type LibrarySortMode = "default" | "name-asc" | "name-desc" | "smart";
 
 const SORT_ITEMS: MenuEntry[] = [
-    { value: "default", label: "默认顺序", icon: <AppIcon name="layers" /> },
+    { value: "default", label: "默认", icon: <AppIcon name="sort" /> },
     { value: "name-asc", label: "名称 A → Z", icon: <AppIcon name="arrow-down" /> },
     { value: "name-desc", label: "名称 Z → A", icon: <AppIcon name="arrow-up" /> },
+    { value: "smart", label: "智能排序", icon: <AppIcon name="sparkles" /> },
 ];
 
 const SORT_LABELS: Record<LibrarySortMode, string> = {
-    default: "默认顺序",
+    default: "默认",
     "name-asc": "名称 A → Z",
     "name-desc": "名称 Z → A",
+    smart: "智能排序",
 };
 
 const readSortMode = (): LibrarySortMode => {
@@ -87,12 +91,7 @@ export const LibraryPage = () => {
     const accountId = user?.id ?? "";
 
     // 首屏与筛选切换统一走 useAsync：加载中 / 出错 / 空数据互不混淆
-    const listState = useAsync(() => loadLibrary({ keyword: debouncedKeyword, category }), [
-        accountId,
-        debouncedKeyword,
-        category,
-        reloadToken,
-    ]);
+    const listState = useAsync(() => loadLibrary({ keyword: debouncedKeyword, category }), [accountId, debouncedKeyword, category, reloadToken]);
 
     const dragBox = useDragSelect({
         containerRef: gridRef,
@@ -156,9 +155,7 @@ export const LibraryPage = () => {
         let timer = 0;
         const check = () => {
             if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 120) {
-                void loadMoreLibrary({ keyword: debouncedKeyword, category }).catch((error: unknown) =>
-                    setLoadMoreError(toError(error)),
-                );
+                void loadMoreLibrary({ keyword: debouncedKeyword, category }).catch((error: unknown) => setLoadMoreError(toError(error)));
             }
         };
         // 等布局稳定后再判断，避免内容不足一屏或刚好到底时卡住
@@ -185,15 +182,19 @@ export const LibraryPage = () => {
     const favoriteOf = (icon: LibraryIcon) => favorites.find((item) => item.refId === icon.iconId);
     const isFavorite = (icon: LibraryIcon) => Boolean(favoriteOf(icon));
     const inCart = (icon: LibraryIcon) => cartItems.some((item) => item.key === `library:${icon.iconId}`);
+    const phashes = useIconPhashes(icons, sortMode === "smart");
 
     const sortedIcons = useMemo(() => {
         if (sortMode === "default") {
             return icons;
         }
+        if (sortMode === "smart") {
+            return sortIconsBySimilarity(icons, (icon) => icon.phash || phashes.get(icon.svg) || "");
+        }
         return [...icons].sort((a, b) =>
             sortMode === "name-asc" ? a.className.localeCompare(b.className, "zh") : b.className.localeCompare(a.className, "zh"),
         );
-    }, [icons, sortMode]);
+    }, [icons, sortMode, phashes]);
 
     const selectedIcons = useMemo(() => icons.filter((icon) => selected.includes(icon.iconId)), [icons, selected]);
 
@@ -211,11 +212,7 @@ export const LibraryPage = () => {
             }
         });
         const ignored = selectedIcons.length - added;
-        showCartTip(
-            added > 0
-                ? `已采集 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}`
-                : `所选 ${ignored} 个图标均已在采集中`,
-        );
+        showCartTip(added > 0 ? `已采集 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}` : `所选 ${ignored} 个图标均已在采集中`);
     };
 
     /** 批量收藏（自动去重）：已收藏过的图标跳过并在提示里说明忽略数量 */
@@ -266,9 +263,7 @@ export const LibraryPage = () => {
         }
         const existed = favoriteOf(icon);
         if (existed) {
-            void removeFavorite(existed.id).catch((error: unknown) =>
-                Toast.showError(error instanceof Error ? error.message : "操作失败"),
-            );
+            void removeFavorite(existed.id).catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "操作失败"));
             return;
         }
         void addFavorite({
@@ -286,8 +281,7 @@ export const LibraryPage = () => {
     };
 
     /** 拖拽到采集按钮时携带的条目：拖的是选中项就带上全部选中 */
-    const dragItemsOf = (icon: LibraryIcon) =>
-        (selected.length > 1 && selected.includes(icon.iconId) ? selectedIcons : [icon]).map(cartItemFromLibrary);
+    const dragItemsOf = (icon: LibraryIcon) => (selected.length > 1 && selected.includes(icon.iconId) ? selectedIcons : [icon]).map(cartItemFromLibrary);
 
     const deleteIconsNow = (iconIds: string[]) =>
         api.library
@@ -357,13 +351,7 @@ export const LibraryPage = () => {
                     />
                     <div className="ui-search">
                         <AppIcon name="search" />
-                        <input
-                            className="ui-input"
-                            type="search"
-                            placeholder="搜索"
-                            value={keyword}
-                            onChange={(event) => setKeyword(event.target.value)}
-                        />
+                        <input className="ui-input" type="search" placeholder="搜索" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
                     </div>
                     {selected.length > 0 && (
                         <div className="batch-actions">
@@ -406,6 +394,7 @@ export const LibraryPage = () => {
                                 type="button"
                                 className={`ui-btn small button-tonal select-like project-toolbar__sort ${sortMode !== "default" ? "has-value" : ""}`}
                             >
+                                {SORT_ITEMS.find((item) => item.value === sortMode)?.icon}
                                 {SORT_LABELS[sortMode]}
                             </button>
                         }
@@ -481,12 +470,7 @@ export const LibraryPage = () => {
                     </div>
                 )}
 
-                {dragBox && (
-                    <div
-                        className="drag-select-box"
-                        style={{ left: dragBox.left, top: dragBox.top, width: dragBox.width, height: dragBox.height }}
-                    />
-                )}
+                {dragBox && <div className="drag-select-box" style={{ left: dragBox.left, top: dragBox.top, width: dragBox.width, height: dragBox.height }} />}
             </div>
 
             <IconDetailDialog

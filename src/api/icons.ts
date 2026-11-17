@@ -1,4 +1,5 @@
 import type { IconInput, IconItem, IconOptimizeOptions } from "@/types";
+import { computeIconPhash, computeIconPhashes } from "@/utils/iconMatcher";
 import { normalizeSvg, optimizeSvg, sanitizeIconName } from "@/utils/svg";
 import { ApiError, iconGetJSON, iconPostJSON } from "./http";
 
@@ -28,7 +29,11 @@ export const createIcons = async (projectId: string, inputs: IconInput[]): Promi
         } catch {
             throw new ApiError(`图标「${input.className}」的 SVG 无法解析`, "invalid-svg");
         }
-        return { className: input.className, category: input.category?.trim() || "", svg, tags: cleanTags(input.tags), refId: input.refId };
+        return { className: input.className, category: input.category?.trim() || "", svg, tags: cleanTags(input.tags), refId: input.refId, phash: "" };
+    });
+    const phashes = await computeIconPhashes(icons.map((icon) => icon.svg));
+    icons.forEach((icon, index) => {
+        icon.phash = phashes[index];
     });
 
     const created: IconItem[] = [];
@@ -51,7 +56,7 @@ export const addIconsFromLibrary = (projectId: string, iconIds: string[]): Promi
 };
 
 /** 更新图标 */
-export const updateIcon = (
+export const updateIcon = async (
     iconId: string,
     patch: Partial<Pick<IconItem, "className" | "category" | "svg" | "tags">>,
 ): Promise<IconItem> => {
@@ -63,16 +68,20 @@ export const updateIcon = (
         item.category = patch.category.trim();
     }
     if (patch.svg !== undefined) {
+        let svg: string;
         try {
-            item.svg = normalizeSvg(patch.svg);
+            svg = normalizeSvg(patch.svg);
         } catch {
-            return Promise.reject(new ApiError("SVG 无法解析", "invalid-svg"));
+            throw new ApiError("SVG 无法解析", "invalid-svg");
         }
+        item.svg = svg;
+        item.phash = await computeIconPhash(svg);
     }
     if (patch.tags !== undefined) {
         item.tags = cleanTags(patch.tags);
     }
-    return iconPostJSON("icon/saveBatch", { items: [item] }).then((data) => (data?.list ?? [])[0] as IconItem);
+    const data = await iconPostJSON("icon/saveBatch", { items: [item] });
+    return (data?.list ?? [])[0] as IconItem;
 };
 
 /** 批量删除 */
@@ -97,7 +106,7 @@ export const optimizeIcons = async (iconIds: string[], options: IconOptimizeOpti
         throw new ApiError("请先选择图标");
     }
     const icons = await listIconsByIds(iconIds);
-    const items: { iconId: string; svg: string }[] = [];
+    const items: { iconId: string; svg: string; phash?: string }[] = [];
     icons.forEach((icon) => {
         try {
             items.push({ iconId: icon.iconId, svg: optimizeSvg(icon.svg, options) });
@@ -108,6 +117,10 @@ export const optimizeIcons = async (iconIds: string[], options: IconOptimizeOpti
     if (items.length === 0) {
         throw new ApiError("没有图标被成功优化", "invalid-svg");
     }
+    const phashes = await computeIconPhashes(items.map((item) => item.svg));
+    items.forEach((item, index) => {
+        item.phash = phashes[index];
+    });
     const data = await iconPostJSON("icon/saveBatch", { items });
     return (data?.list ?? []) as IconItem[];
 };

@@ -1,4 +1,5 @@
 import type { IconInput, IconOptimizeOptions, LibraryCategoryCount, LibraryIcon, PageResult } from "@/types";
+import { computeIconPhashes } from "@/utils/iconMatcher";
 import { normalizeSvg, optimizeSvg, sanitizeIconName } from "@/utils/svg";
 import { ApiError, iconGetJSON, iconPostJSON } from "./http";
 
@@ -84,7 +85,11 @@ export const createLibraryIcons = async (inputs: IconInput[]): Promise<LibraryIc
         } catch {
             throw new ApiError(`图标「${input.className}」的 SVG 无法解析`, "invalid-svg");
         }
-        return { className: input.className, svg, tags: cleanTags(input.tags), category: input.category };
+        return { className: input.className, svg, tags: cleanTags(input.tags), category: input.category, phash: "" };
+    });
+    const phashes = await computeIconPhashes(icons.map((icon) => icon.svg));
+    icons.forEach((icon, index) => {
+        icon.phash = phashes[index];
     });
 
     const created: LibraryIcon[] = [];
@@ -97,10 +102,20 @@ export const createLibraryIcons = async (inputs: IconInput[]): Promise<LibraryIc
 };
 
 /** 批量保存公共库图标修改（编辑、批量优化、批量重命名共用） */
-export const saveLibraryIcons = (items: (LibraryIconPatch & { iconId: string })[]): Promise<LibraryIcon[]> =>
-    iconPostJSON("library/saveBatch", { items: items.map((item) => ({ ...item, tags: item.tags && cleanTags(item.tags) })) }).then(
-        (data) => (data?.list ?? []) as LibraryIcon[],
-    );
+export const saveLibraryIcons = async (items: (LibraryIconPatch & { iconId: string })[]): Promise<LibraryIcon[]> => {
+    const payload: (LibraryIconPatch & { iconId: string; phash?: string })[] = items.map((item) => ({
+        ...item,
+        tags: item.tags && cleanTags(item.tags),
+    }));
+    // SVG 变更时同步重算感知哈希，供相似图标匹配使用
+    const changed = payload.filter((item) => item.svg !== undefined);
+    const phashes = await computeIconPhashes(changed.map((item) => item.svg || ""));
+    changed.forEach((item, index) => {
+        item.phash = phashes[index];
+    });
+    const data = await iconPostJSON("library/saveBatch", { items: payload });
+    return (data?.list ?? []) as LibraryIcon[];
+};
 
 /** 更新单个公共库图标 */
 export const updateLibraryIcon = (iconId: string, patch: LibraryIconPatch): Promise<LibraryIcon> => {

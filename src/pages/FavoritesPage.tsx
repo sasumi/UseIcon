@@ -6,6 +6,7 @@ import { DEFAULT_ICON_SIZE, FAVORITES_SORT_STORAGE_KEY } from "@/config";
 import { useClearOnBlankClick } from "@/hooks/useClearOnBlankClick";
 import { useDialogForm } from "@/hooks/useDialogForm";
 import { useDragSelect } from "@/hooks/useDragSelect";
+import { useIconPhashes } from "@/hooks/useIconPhashes";
 import { useTimedTip } from "@/hooks/useTimedTip";
 import { navigate } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
@@ -13,6 +14,7 @@ import { openLoginDialog } from "@/store/loginDialogStore";
 import { cartItemFromFavorite, useCartStore } from "@/store/cartStore";
 import { useLibraryStore } from "@/store/libraryStore";
 import { rememberCategory } from "@/utils/category";
+import { sortIconsBySimilarity } from "@/utils/iconMatcher";
 import { AppIcon } from "@/components/common/AppIcon";
 import { CategoryInput } from "@/components/common/CategoryInput";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -25,18 +27,20 @@ import { ExportMenu } from "@/components/project/ExportMenu";
 import { IconCard } from "@/components/project/IconCard";
 import { DisplayControl } from "@/components/library/DisplayPanel";
 
-type FavoritesSortMode = "default" | "name-asc" | "name-desc";
+type FavoritesSortMode = "default" | "name-asc" | "name-desc" | "smart";
 
 const SORT_ITEMS: MenuEntry[] = [
-    { value: "default", label: "默认顺序", icon: <AppIcon name="layers" /> },
+    { value: "default", label: "默认", icon: <AppIcon name="sort" /> },
     { value: "name-asc", label: "名称 A → Z", icon: <AppIcon name="arrow-down" /> },
     { value: "name-desc", label: "名称 Z → A", icon: <AppIcon name="arrow-up" /> },
+    { value: "smart", label: "智能排序", icon: <AppIcon name="sparkles" /> },
 ];
 
 const SORT_LABELS: Record<FavoritesSortMode, string> = {
-    default: "默认顺序",
+    default: "默认",
     "name-asc": "名称 A → Z",
     "name-desc": "名称 Z → A",
+    smart: "智能排序",
 };
 
 const readSortMode = (): FavoritesSortMode => {
@@ -65,12 +69,10 @@ export const FavoritesPage = () => {
     const [editing, setEditing] = useState<FavoriteIcon | null>(null);
     const [reloadToken, setReloadToken] = useState(0);
     const gridRef = useRef<HTMLUListElement | null>(null);
+    const phashes = useIconPhashes(favorites, sortMode === "smart");
 
     // 收藏加载统一走 useAsync：加载中 / 出错 / 空数据互不混淆
-    const favoritesState = useAsync(() => (user ? fetchFavorites() : Promise.resolve<FavoriteIcon[]>([])), [
-        user?.id,
-        reloadToken,
-    ]);
+    const favoritesState = useAsync(() => (user ? fetchFavorites() : Promise.resolve<FavoriteIcon[]>([])), [user?.id, reloadToken]);
 
     useClearOnBlankClick(() => setSelected((prev) => (prev.length === 0 ? prev : [])));
 
@@ -114,10 +116,13 @@ export const FavoritesPage = () => {
         if (sortMode === "default") {
             return result;
         }
+        if (sortMode === "smart") {
+            return sortIconsBySimilarity(result, (item) => phashes.get(item.svg) || "");
+        }
         return [...result].sort((a, b) =>
             sortMode === "name-asc" ? a.className.localeCompare(b.className, "zh") : b.className.localeCompare(a.className, "zh"),
         );
-    }, [favorites, keyword, category, sortMode]);
+    }, [favorites, keyword, category, sortMode, phashes]);
 
     const dragBox = useDragSelect({
         containerRef: gridRef,
@@ -166,11 +171,7 @@ export const FavoritesPage = () => {
             }
         });
         const ignored = selectedFavorites.length - added;
-        showCartTip(
-            added > 0
-                ? `已采集 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}`
-                : `所选 ${ignored} 个图标均已在采集中`,
-        );
+        showCartTip(added > 0 ? `已采集 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}` : `所选 ${ignored} 个图标均已在采集中`);
     };
 
     /** 批量移除收藏 */
@@ -182,14 +183,16 @@ export const FavoritesPage = () => {
             title: "移除收藏",
             message: `确定从收藏中移除选中的 ${selected.length} 个图标吗？`,
             confirmText: "移除",
-        }).then(() => {
-            void Promise.all(selected.map((id) => removeFavorite(id)))
-                .then(() => {
-                    Toast.showSuccess(`已移除 ${selected.length} 个收藏`);
-                    setSelected([]);
-                })
-                .catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "移除失败"));
-        }).catch(() => undefined);
+        })
+            .then(() => {
+                void Promise.all(selected.map((id) => removeFavorite(id)))
+                    .then(() => {
+                        Toast.showSuccess(`已移除 ${selected.length} 个收藏`);
+                        setSelected([]);
+                    })
+                    .catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "移除失败"));
+            })
+            .catch(() => undefined);
     };
 
     /** 导出用：收藏项转为图标结构 */
@@ -249,13 +252,7 @@ export const FavoritesPage = () => {
                     <SelectAllToggle selected={selectedCount} total={filtered.length} onChange={toggleSelectAll} />
                     <div className="ui-search project-toolbar__search">
                         <AppIcon name="search" />
-                        <input
-                            className="ui-input"
-                            type="search"
-                            placeholder="搜索"
-                            value={keyword}
-                            onChange={(event) => setKeyword(event.target.value)}
-                        />
+                        <input className="ui-input" type="search" placeholder="搜索" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
                     </div>
                     {selected.length > 0 && (
                         <div className="batch-actions">
@@ -280,7 +277,7 @@ export const FavoritesPage = () => {
                         onChange={(value) => changeSortMode(value as FavoritesSortMode)}
                         trigger={
                             <button className="ui-btn small button-tonal" type="button" title="排序方式">
-                                <AppIcon name="layers" />
+                                {SORT_ITEMS.find((item) => item.value === sortMode)?.icon}
                                 {SORT_LABELS[sortMode]}
                             </button>
                         }
@@ -330,12 +327,7 @@ export const FavoritesPage = () => {
                     </ul>
                 )}
 
-                {dragBox && (
-                    <div
-                        className="drag-select-box"
-                        style={{ left: dragBox.left, top: dragBox.top, width: dragBox.width, height: dragBox.height }}
-                    />
-                )}
+                {dragBox && <div className="drag-select-box" style={{ left: dragBox.left, top: dragBox.top, width: dragBox.width, height: dragBox.height }} />}
             </div>
 
             <FavoriteEditDialog
@@ -344,9 +336,7 @@ export const FavoritesPage = () => {
                 open={Boolean(editing)}
                 setOpen={(open) => !open && setEditing(null)}
                 onSaved={() => {
-                    void fetchFavorites().catch((error: unknown) =>
-                        Toast.showError(error instanceof Error ? error.message : "刷新收藏失败"),
-                    );
+                    void fetchFavorites().catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "刷新收藏失败"));
                 }}
             />
         </>
@@ -431,7 +421,9 @@ const FavoriteEditDialog = ({
                                 <label>标签</label>
                                 <TagEditor value={tags} onChange={setTags} />
                             </div>
-                            <p className="ui-note">来源：{favorite.source === "library" ? "公共库" : "项目"}，收藏时间 {new Date(favorite.createdAt).toLocaleString()}</p>
+                            <p className="ui-note">
+                                来源：{favorite.source === "library" ? "公共库" : "项目"}，收藏时间 {new Date(favorite.createdAt).toLocaleString()}
+                            </p>
                         </div>
                     </div>
                 </form>

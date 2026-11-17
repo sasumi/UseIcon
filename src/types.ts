@@ -78,6 +78,7 @@ export interface IconItem {
     category?: string; // 分类
     svg: string; // 标准化的 SVG 源码
     tags: string[]; // 标签
+    phash?: string; // 感知哈希（前端 icon-matcher 计算，用于相似图标匹配）
     refId?: string; // 来源图标 ID（从公共库或其他项目复制时记录）
     createdBy: string; // 创建者用户 ID
     createdAt: number; // 创建时间戳
@@ -95,6 +96,7 @@ export interface LibraryIcon {
     svg: string; // SVG 源码
     category: string; // 分类
     tags: string[]; // 搜索标签
+    phash?: string; // 感知哈希（前端 icon-matcher 计算，用于相似图标匹配）
     order?: number; // 排序号（升序）
     updatedAt?: number; // 更新时间戳
 }

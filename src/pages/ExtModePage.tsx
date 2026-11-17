@@ -11,8 +11,10 @@ import { openLoginDialog } from "@/store/loginDialogStore";
 import { useProjectStore } from "@/store/projectStore";
 import type { IconItem, Project } from "@/types";
 import { copyText } from "@/utils/download";
+import { sortIconsBySimilarity } from "@/utils/iconMatcher";
 import { getProjectAccess } from "@/utils/permission";
 import { renderIconCode } from "@/utils/svg";
+import { useIconPhashes } from "@/hooks/useIconPhashes";
 import { usePanelHeight } from "@/hooks/usePanelHeight";
 import { DisplayControl } from "@/components/library/DisplayPanel";
 import { AppIcon } from "@/components/common/AppIcon";
@@ -33,19 +35,21 @@ const CODE_PANEL_HEIGHT = {
     max: 420,
 };
 
-type SortMode = "default" | "name-asc" | "name-desc" | "custom";
+type SortMode = "default" | "name-asc" | "name-desc" | "smart" | "custom";
 
 const SORT_ITEMS: MenuEntry[] = [
-    { value: "default", label: "默认顺序", icon: <AppIcon name="layers" /> },
+    { value: "default", label: "默认", icon: <AppIcon name="layers" /> },
     { value: "name-asc", label: "名称 A → Z", icon: <AppIcon name="arrow-down" /> },
     { value: "name-desc", label: "名称 Z → A", icon: <AppIcon name="arrow-up" /> },
+    { value: "smart", label: "智能排序", icon: <AppIcon name="sparkles" /> },
     { value: "custom", label: "自定义排序", icon: <AppIcon name="more-vertical" /> },
 ];
 
 const SORT_LABELS: Record<SortMode, string> = {
-    default: "默认顺序",
+    default: "默认",
     "name-asc": "名称 A → Z",
     "name-desc": "名称 Z → A",
+    smart: "智能排序",
     custom: "自定义排序",
 };
 
@@ -119,6 +123,7 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
     }, [projectId]);
 
     const access = useMemo(() => getProjectAccess(project, user), [project, user]);
+    const phashes = useIconPhashes(icons, sortMode === "smart");
 
     const template = useMemo(() => {
         if (templateValue === PROJECT_TEMPLATE_VALUE) {
@@ -245,8 +250,11 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
         if (sortMode === "name-desc") {
             return [...matched].sort((a, b) => b.className.localeCompare(a.className, "zh"));
         }
+        if (sortMode === "smart") {
+            return sortIconsBySimilarity(matched, (icon) => icon.phash || phashes.get(icon.svg) || "");
+        }
         return matched;
-    }, [icons, keyword, tag, sortMode]);
+    }, [icons, keyword, tag, sortMode, phashes]);
 
     const changeSort = (value: unknown) => {
         if (typeof value !== "string" || !(value in SORT_LABELS)) {

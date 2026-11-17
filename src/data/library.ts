@@ -453,6 +453,18 @@ const BUILTIN_ICONS: BuiltinIcon[] = [
         svg: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z\"/></svg>",
     },
     {
+        className: "sparkles",
+        category: "操作",
+        tags: ["smart", "ai", "智能"],
+        svg: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M11 3.5l1.8 4.9 4.9 1.8-4.9 1.8L11 16.9l-1.8-4.9L4.3 10.2l4.9-1.8z\"/><path d=\"M18.4 14.6l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z\"/></svg>",
+    },
+    {
+        className: "sort",
+        category: "操作",
+        tags: ["sort", "order", "排序"],
+        svg: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 6h10M4 12h7M4 18h4\"/><path d=\"M18 5v14M15 15.5l3 3 3-3\"/></svg>",
+    },
+    {
         className: "home",
         category: "设备",
         tags: ["house", "主页"],

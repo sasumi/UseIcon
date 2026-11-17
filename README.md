@@ -52,6 +52,7 @@ pnpm preview    # 预览生产构建，同样可通过局域网访问
 | 使用与导出 | 代码模板拖拽插入、复制代码、单图标 SVG/PNG 下载；项目详情「导出」菜单支持 SVG 列表、SVG Sprite、PNG、iconfont 字体包、JSON |
 | 拓展模式（ExtMode） | `/#/projects/:id/ext-mode` 竖屏页面，适合在 VSCode 的 Simple Browser 中常驻，拖动图标插入代码；代码模板可切换并新增自定义模板 |
 | 侧栏调宽 | 各页侧栏与采集抽屉的分隔条可拖动调整宽度，双击 / 回车恢复默认，宽度按页面记忆在本地；项目侧栏窄于 220px 时自动精简为图标 + 弹出面板 |
+| 智能排序 | 图标列表可按外形自动把相似图标聚在一起（基于图标指纹），公共库 / 项目 / 收藏 / 拓展模式通用 |
 | 主题 | 亮色 / 暗色 / 跟随系统，配色对齐 VSCode，含 minreact-ui 组件的主题补丁 |
 
 ## 账号体系（api.tthaoke.com）
@@ -99,7 +100,7 @@ src/
 ├── data/library.ts    # 内置界面图标（AppIcon 使用）+ 公共库分类常量
 ├── store/             # zustand：auth / library / project / cart / theme / display / 代码模板
 ├── hooks/             # 可复用 hooks（侧栏拖动调宽等）
-├── utils/             # SVG 解析优化、iconfont 解析、图片转 SVG、导出、权限
+├── utils/             # SVG 解析优化、图标指纹（icon-matcher）、iconfont 解析、图片转 SVG、导出、权限
 ├── components/        # 布局、公共组件、项目对话框、账户、采集
 ├── pages/             # 公共库、收藏、项目工作区、拓展模式、登录、版本发布、扩展桥接
 └── styles/            # SCSS：变量（明暗主题）、各页面样式、minreact-ui 主题补丁
