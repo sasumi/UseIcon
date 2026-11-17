@@ -9,7 +9,7 @@ export const TOKEN_STORAGE_KEY = "useicon:token";
 /** 登录用户缓存键 */
 export const LOGIN_USER_STORAGE_KEY = "useicon:login-user";
 
-/** 采集车存储键 */
+/** 采集存储键 */
 export const CART_STORAGE_KEY = "useicon:cart";
 
 
@@ -43,6 +43,12 @@ export const LIBRARY_SORT_STORAGE_KEY = "useicon:library-sort";
 
 /** 默认图标尺寸 */
 export const DEFAULT_ICON_SIZE = 24;
+
+/** 项目访问类型：0 团队（仅成员） */
+export const ACCESS_TYPE_TEAM = 0;
+
+/** 项目访问类型：1 公开 */
+export const ACCESS_TYPE_PUBLIC = 1;
 
 /** 图标默认颜色 */
 export const DEFAULT_ICON_COLOR = "currentColor";

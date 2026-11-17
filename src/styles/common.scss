@@ -381,10 +381,9 @@
     }
 }
 
-.ui-row {
+.ui-label-check {
     display: flex;
     align-items: center;
-    gap: 0.5em;
 }
 
 .ui-switch-row {
@@ -429,11 +428,6 @@ input[type='checkbox'] {
     &.viewer {
         color: var(--color-secondary);
         background: var(--color-background-tertiary);
-    }
-
-    &.guest {
-        color: var(--color-warning);
-        background: color-mix(in srgb, var(--color-warning) 14%, transparent);
     }
 
     &.public {

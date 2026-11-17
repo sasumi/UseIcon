@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { DIALOG_SIZE_NORMAL, Dialog, Select, Toast } from "minreact-ui";
 import { api } from "@/api";
+import { ACCESS_TYPE_PUBLIC, ACCESS_TYPE_TEAM } from "@/config";
 import { useDialogForm } from "@/hooks/useDialogForm";
 import { useProjectStore } from "@/store/projectStore";
-import type { Project, ProjectVisibility } from "@/types";
+import type { Project, ProjectAccessType } from "@/types";
 import { AppIcon } from "@/components/common/AppIcon";
 
 /** 新建项目对话框 */
@@ -18,16 +19,14 @@ export const ProjectFormDialog = ({
 }) => {
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
-    const [visibility, setVisibility] = useState<ProjectVisibility>("team");
-    const [allowGuest, setAllowGuest] = useState(false);
+    const [accessType, setAccessType] = useState<ProjectAccessType>(ACCESS_TYPE_TEAM);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (open) {
             setName("");
             setDescription("");
-            setVisibility("team");
-            setAllowGuest(false);
+            setAccessType(ACCESS_TYPE_TEAM);
         }
     }, [open]);
 
@@ -37,7 +36,7 @@ export const ProjectFormDialog = ({
         }
         setSaving(true);
         try {
-            const project = await api.projects.createProject({ name, description, visibility, allowGuest });
+            const project = await api.projects.createProject({ name, description, accessType });
             Toast.showSuccess("项目已创建");
             setOpen(false);
             // 侧栏列表已加载过，创建后就地刷新，避免新项目要刷新页面才出现
@@ -79,22 +78,18 @@ export const ProjectFormDialog = ({
                                 />
                             </div>
                             <div className="ui-field">
-                                <label htmlFor="project-visibility">可见性</label>
+                                <label htmlFor="project-access">访问权限</label>
                                 <Select
-                                    key={visibility}
+                                    key={accessType}
                                     items={[
-                                        { value: "team", label: "内部项目", icon: <AppIcon name="lock" /> },
-                                        { value: "public", label: "公开项目", icon: <AppIcon name="globe" /> },
+                                        { value: String(ACCESS_TYPE_TEAM), label: "团队项目", icon: <AppIcon name="lock" /> },
+                                        { value: String(ACCESS_TYPE_PUBLIC), label: "公开项目", icon: <AppIcon name="globe" /> },
                                     ]}
-                                    value={visibility}
-                                    onChange={(value) => setVisibility(value as ProjectVisibility)}
+                                    value={String(accessType)}
+                                    onChange={(value) => setAccessType(Number(value) === ACCESS_TYPE_PUBLIC ? ACCESS_TYPE_PUBLIC : ACCESS_TYPE_TEAM)}
                                     triggerClassName="ui-btn"
                                 />
                             </div>
-                            <label className="ui-switch-row">
-                                <span>允许游客使用</span>
-                                <input type="checkbox" checked={allowGuest} onChange={(event) => setAllowGuest(event.target.checked)} />
-                            </label>
                         </div>
                     </div>
                 </form>

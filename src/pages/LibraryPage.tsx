@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, DropdownMenu, LoadingHolder, Toast } from "minreact-ui";
+import { Dialog, DropdownMenu, ErrorHolder, LoadingHolder, Toast, useAsync } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import { api } from "@/api";
 import { LIBRARY_SORT_STORAGE_KEY } from "@/config";
@@ -15,6 +15,7 @@ import type { LibraryIcon } from "@/types";
 import { copyText, downloadPng } from "@/utils/download";
 import { AppIcon } from "@/components/common/AppIcon";
 import { EmptyState } from "@/components/common/EmptyState";
+import { SelectAllToggle } from "@/components/common/SelectAllToggle";
 import { SidePanel } from "@/components/common/SidePanel";
 import { TipBubble } from "@/components/common/TipBubble";
 import { IconCard } from "@/components/project/IconCard";
@@ -48,6 +49,8 @@ const readSortMode = (): LibrarySortMode => {
     }
 };
 
+const toError = (error: unknown): Error => (error instanceof Error ? error : new Error("加载失败"));
+
 /** 公共图标库（数据来自后台，维护者可上传 / 编辑 / 批量优化 / 删除；所有访问者可多选采集 / 收藏） */
 export const LibraryPage = () => {
     const icons = useLibraryStore((state) => state.icons);
@@ -56,7 +59,6 @@ export const LibraryPage = () => {
     const categoryCounts = useLibraryStore((state) => state.categories);
     const canEdit = useLibraryStore((state) => state.canEdit);
     const favorites = useLibraryStore((state) => state.favorites);
-    const loading = useLibraryStore((state) => state.loading);
     const loadingMore = useLibraryStore((state) => state.loadingMore);
     const loadLibrary = useLibraryStore((state) => state.loadLibrary);
     const loadMoreLibrary = useLibraryStore((state) => state.loadMoreLibrary);
@@ -70,7 +72,10 @@ export const LibraryPage = () => {
     const { tip: cartTip, show: showCartTip } = useTimedTip();
     const [sortMode, setSortMode] = useState<LibrarySortMode>(readSortMode);
     const [keyword, setKeyword] = useState("");
+    const [debouncedKeyword, setDebouncedKeyword] = useState("");
     const [category, setCategory] = useState("");
+    const [reloadToken, setReloadToken] = useState(0);
+    const [loadMoreError, setLoadMoreError] = useState<Error | null>(null);
     const [detail, setDetail] = useState<LibraryIcon | null>(null);
     const [selected, setSelected] = useState<string[]>([]);
     const [uploadOpen, setUploadOpen] = useState(false);
@@ -80,6 +85,15 @@ export const LibraryPage = () => {
     const gridRef = useRef<HTMLUListElement | null>(null);
     const scrollRef = useRef<HTMLDivElement | null>(null);
     const accountId = user?.id ?? "";
+
+    // 首屏与筛选切换统一走 useAsync：加载中 / 出错 / 空数据互不混淆
+    const listState = useAsync(() => loadLibrary({ keyword: debouncedKeyword, category }), [
+        accountId,
+        debouncedKeyword,
+        category,
+        reloadToken,
+    ]);
+
     const dragBox = useDragSelect({
         containerRef: gridRef,
         enabled: icons.length > 0,
@@ -87,38 +101,64 @@ export const LibraryPage = () => {
     });
     useClearOnBlankClick(() => setSelected((prev) => (prev.length === 0 ? prev : [])));
 
-    // 首次进入与切换账号时重置筛选并加载第一页（维护权限随账号变化）
+    const reload = () => {
+        setLoadMoreError(null);
+        setReloadToken((token) => token + 1);
+    };
+
+    const changeCategory = (next: string) => {
+        if (next === category) {
+            return;
+        }
+        setCategory(next);
+        setSelected((prev) => (prev.length === 0 ? prev : []));
+        setLoadMoreError(null);
+    };
+
+    const retryLoadMore = () => {
+        setLoadMoreError(null);
+        void loadMoreLibrary({ keyword: debouncedKeyword, category }).catch((error: unknown) => setLoadMoreError(toError(error)));
+    };
+
+    // 增删改后按当前筛选刷新已加载的部分：失败只提示，保留现有列表
+    const refreshList = () => {
+        void refreshLibrary({ keyword: debouncedKeyword, category }).catch((error: unknown) =>
+            Toast.showError(error instanceof Error ? error.message : "刷新公共库失败"),
+        );
+    };
+
+    // 切换账号（维护权限随账号变化）时重置筛选与选择状态
     useEffect(() => {
         setKeyword("");
+        setDebouncedKeyword("");
         setCategory("");
         setSelected([]);
         setDetail(null);
-        void loadLibrary({ keyword: "", category: "" });
-    }, [accountId, loadLibrary]);
+        setLoadMoreError(null);
+    }, [accountId]);
 
-    // 关键词 / 分类变化后重新拉取第一页（关键词输入做防抖）
+    // 关键词输入防抖
     useEffect(() => {
         const timer = window.setTimeout(() => {
-            const state = useLibraryStore.getState();
-            if (state.keyword === keyword.trim() && state.category === category) {
-                return;
-            }
-            setSelected([]);
-            void loadLibrary({ keyword, category });
+            setDebouncedKeyword(keyword.trim());
+            setSelected((prev) => (prev.length === 0 ? prev : []));
+            setLoadMoreError(null);
         }, 260);
         return () => window.clearTimeout(timer);
-    }, [keyword, category, loadLibrary]);
+    }, [keyword]);
 
-    // 图标列表滚动到底部（或首屏内容不足）时加载下一页
+    // 图标列表滚动到底部（或首屏内容不足）时加载下一页；首屏加载中或失败后不自动重试
     useEffect(() => {
         const panel = scrollRef.current;
-        if (!panel) {
+        if (!panel || listState.loading || loadMoreError) {
             return;
         }
         let timer = 0;
         const check = () => {
             if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 120) {
-                void loadMoreLibrary();
+                void loadMoreLibrary({ keyword: debouncedKeyword, category }).catch((error: unknown) =>
+                    setLoadMoreError(toError(error)),
+                );
             }
         };
         // 等布局稳定后再判断，避免内容不足一屏或刚好到底时卡住
@@ -128,7 +168,7 @@ export const LibraryPage = () => {
             window.clearTimeout(timer);
             panel.removeEventListener("scroll", check);
         };
-    }, [loadMoreLibrary, hasMore, icons.length]);
+    }, [loadMoreLibrary, hasMore, icons.length, debouncedKeyword, category, listState.loading, loadMoreError]);
 
     const categories = useMemo(() => sortLibraryCategories(categoryCounts.map((item) => item.name)), [categoryCounts]);
 
@@ -142,9 +182,9 @@ export const LibraryPage = () => {
 
     const libraryTotal = useMemo(() => categoryCounts.reduce((sum, item) => sum + item.count, 0), [categoryCounts]);
 
-    const favoriteOf = (icon: LibraryIcon) => favorites.find((item) => item.libraryId === icon.id);
+    const favoriteOf = (icon: LibraryIcon) => favorites.find((item) => item.refId === icon.iconId);
     const isFavorite = (icon: LibraryIcon) => Boolean(favoriteOf(icon));
-    const inCart = (icon: LibraryIcon) => cartItems.some((item) => item.key === `library:${icon.id}`);
+    const inCart = (icon: LibraryIcon) => cartItems.some((item) => item.key === `library:${icon.iconId}`);
 
     const sortedIcons = useMemo(() => {
         if (sortMode === "default") {
@@ -155,7 +195,7 @@ export const LibraryPage = () => {
         );
     }, [icons, sortMode]);
 
-    const selectedIcons = useMemo(() => icons.filter((icon) => selected.includes(icon.id)), [icons, selected]);
+    const selectedIcons = useMemo(() => icons.filter((icon) => selected.includes(icon.iconId)), [icons, selected]);
 
     const toggleSelect = (iconId: string, checked: boolean) => {
         setSelected((prev) => (checked ? Array.from(new Set([...prev, iconId])) : prev.filter((id) => id !== iconId)));
@@ -173,8 +213,8 @@ export const LibraryPage = () => {
         const ignored = selectedIcons.length - added;
         showCartTip(
             added > 0
-                ? `已加入采集车 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}`
-                : `所选 ${ignored} 个图标均已在采集车中`,
+                ? `已采集 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}`
+                : `所选 ${ignored} 个图标均已在采集中`,
         );
     };
 
@@ -192,7 +232,7 @@ export const LibraryPage = () => {
                 svg: icon.svg,
                 tags: icon.tags.slice(0, 3),
                 source: "library" as const,
-                libraryId: icon.id,
+                refId: icon.iconId,
             })),
         )
             .then(({ added, ignored }) => {
@@ -237,13 +277,17 @@ export const LibraryPage = () => {
             svg: icon.svg,
             tags: icon.tags.slice(0, 3),
             source: "library",
-            libraryId: icon.id,
+            refId: icon.iconId,
         }).catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "收藏失败"));
     };
 
     const toggleCartItem = (icon: LibraryIcon) => {
         toggleCart(cartItemFromLibrary(icon));
     };
+
+    /** 拖拽到采集按钮时携带的条目：拖的是选中项就带上全部选中 */
+    const dragItemsOf = (icon: LibraryIcon) =>
+        (selected.length > 1 && selected.includes(icon.iconId) ? selectedIcons : [icon]).map(cartItemFromLibrary);
 
     const deleteIconsNow = (iconIds: string[]) =>
         api.library
@@ -252,7 +296,7 @@ export const LibraryPage = () => {
                 setSelected((prev) => prev.filter((id) => !iconIds.includes(id)));
                 setDetail(null);
                 Toast.showSuccess("已删除所选图标");
-                void refreshLibrary();
+                refreshList();
             })
             .catch((error: unknown) => Toast.showError(error instanceof Error ? error.message : "删除失败"));
 
@@ -273,9 +317,9 @@ export const LibraryPage = () => {
         if (!detail) {
             return;
         }
-        const saved = await api.library.updateLibraryIcon(detail.id, patch);
+        const saved = await api.library.updateLibraryIcon(detail.iconId, patch);
         setDetail(saved);
-        void refreshLibrary();
+        refreshList();
     };
 
     return (
@@ -288,13 +332,13 @@ export const LibraryPage = () => {
                 </div>
                 <div className="side-panel__body">
                     <div className="nav-list">
-                        <div className={`nav-item ${category === "" ? "active" : ""}`} onClick={() => setCategory("")}>
+                        <div className={`nav-item ${category === "" ? "active" : ""}`} onClick={() => changeCategory("")}>
                             <AppIcon name="grid" />
                             全部
                             <span className="nav-item__count">{libraryTotal}</span>
                         </div>
                         {categories.map((item) => (
-                            <div key={item} className={`nav-item ${category === item ? "active" : ""}`} onClick={() => setCategory(item)}>
+                            <div key={item} className={`nav-item ${category === item ? "active" : ""}`} onClick={() => changeCategory(item)}>
                                 <AppIcon name="tag" />
                                 {item}
                                 <span className="nav-item__count">{countByCategory[item] || 0}</span>
@@ -306,6 +350,11 @@ export const LibraryPage = () => {
 
             <div className="content-panel padded with-icon-scroll">
                 <div className="content-toolbar project-toolbar">
+                    <SelectAllToggle
+                        selected={selectedIcons.length}
+                        total={icons.length}
+                        onChange={(checked) => setSelected(checked ? icons.map((icon) => icon.iconId) : [])}
+                    />
                     <div className="ui-search">
                         <AppIcon name="search" />
                         <input
@@ -318,7 +367,6 @@ export const LibraryPage = () => {
                     </div>
                     {selected.length > 0 && (
                         <div className="batch-actions">
-                            <span className="batch-actions__count">已选 {selected.length} 个</span>
                             <span className="tip-anchor">
                                 <button className="ui-btn small" type="button" onClick={addSelectedToCart}>
                                     <AppIcon name="cart" />
@@ -365,13 +413,19 @@ export const LibraryPage = () => {
                     {canEdit && (
                         <button className="ui-btn small" type="button" onClick={() => setUploadOpen(true)}>
                             <AppIcon name="upload" />
-                            上传图标
+                            上传
                         </button>
                     )}
                     <DisplayControl />
                 </div>
 
-                {loading && icons.length === 0 ? (
+                {listState.error && icons.length === 0 ? (
+                    <EmptyState variant="error" text={listState.error.message}>
+                        <button className="ui-btn primary" type="button" onClick={reload}>
+                            重试
+                        </button>
+                    </EmptyState>
+                ) : listState.loading && icons.length === 0 ? (
                     <LoadingHolder text="正在加载公共图标库..." />
                 ) : icons.length === 0 ? (
                     <EmptyState text="没有匹配的图标，换个关键词试试" />
@@ -379,23 +433,24 @@ export const LibraryPage = () => {
                     <div ref={scrollRef} className="icon-scroll">
                         <ul ref={gridRef} className="icon-grid">
                             {sortedIcons.map((icon) => (
-                                <li key={icon.id} data-select-id={icon.id}>
+                                <li key={icon.iconId} data-select-id={icon.iconId}>
                                     <IconCard
                                         icon={icon}
                                         favorite={isFavorite(icon)}
                                         inCart={inCart(icon)}
                                         showOpenItem={false}
                                         selectable
-                                        selected={selected.includes(icon.id)}
+                                        dragItems={() => dragItemsOf(icon)}
+                                        selected={selected.includes(icon.iconId)}
                                         canEdit={canEdit}
                                         editLabel="编辑图标"
                                         deleteLabel="删除"
-                                        onToggleSelect={(checked) => toggleSelect(icon.id, checked)}
+                                        onToggleSelect={(checked) => toggleSelect(icon.iconId, checked)}
                                         onOpen={() => setDetail(icon)}
                                         onFavorite={() => toggleFavorite(icon)}
                                         onCart={() => toggleCartItem(icon)}
                                         onEdit={canEdit ? () => setDetail(icon) : undefined}
-                                        onDelete={canEdit ? () => removeIcons([icon.id]) : undefined}
+                                        onDelete={canEdit ? () => removeIcons([icon.iconId]) : undefined}
                                         onCopySvg={() =>
                                             void copyText(icon.svg).then(
                                                 () => Toast.showSuccess("SVG 源码已复制"),
@@ -408,7 +463,20 @@ export const LibraryPage = () => {
                             ))}
                         </ul>
                         <div ref={loadMoreRef} className="icon-grid-more">
-                            {loadingMore ? <LoadingHolder text="加载中..." /> : !hasMore ? `共 ${total} 个图标` : ""}
+                            {loadingMore ? (
+                                <LoadingHolder text="加载中..." />
+                            ) : loadMoreError ? (
+                                <span className="icon-grid-more__error">
+                                    <ErrorHolder error={loadMoreError} />
+                                    <button className="ui-btn small" type="button" onClick={retryLoadMore}>
+                                        重试
+                                    </button>
+                                </span>
+                            ) : !hasMore ? (
+                                `共 ${total} 个图标`
+                            ) : (
+                                ""
+                            )}
                         </div>
                     </div>
                 )}
@@ -432,10 +500,10 @@ export const LibraryPage = () => {
                 onFavorite={() => detail && toggleFavorite(detail)}
                 onCart={() => detail && toggleCartItem(detail)}
                 onSave={saveDetail}
-                onDelete={() => detail && void deleteIconsNow([detail.id])}
+                onDelete={() => detail && void deleteIconsNow([detail.iconId])}
             />
 
-            <UploadDialog open={uploadOpen} setOpen={setUploadOpen} target="library" onImported={() => void refreshLibrary()} />
+            <UploadDialog open={uploadOpen} setOpen={setUploadOpen} target="library" onImported={refreshList} />
 
             <BatchOptimizeDialog
                 open={optimizeOpen}
@@ -445,7 +513,7 @@ export const LibraryPage = () => {
                 optimize={(_, options) => api.library.optimizeLibraryIcons(selectedIcons, options)}
                 onDone={() => {
                     setSelected([]);
-                    void refreshLibrary();
+                    refreshList();
                 }}
             />
 
@@ -456,7 +524,7 @@ export const LibraryPage = () => {
                 rename={(_, options) => api.library.renameLibraryIcons(selectedIcons, options)}
                 onDone={() => {
                     setSelected([]);
-                    void refreshLibrary();
+                    refreshList();
                 }}
             />
         </>

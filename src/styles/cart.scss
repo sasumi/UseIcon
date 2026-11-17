@@ -1,7 +1,7 @@
 @use './env' as *;
 @use './mixins' as *;
 
-// ---------- 采集车悬浮按钮 ----------
+// ---------- 采集悬浮按钮 ----------
 .cart-fab {
     position: fixed;
     right: 1.4rem;
@@ -25,6 +25,31 @@
     &:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 24px rgb(0 0 0 / 18%);
+    }
+
+    // 拖动图标时自动放大，提示可以拖到这里采集
+    &.is-drag-ready {
+        transform: scale(1.22);
+        border-color: var(--color-accent);
+        box-shadow:
+            0 0 0 6px var(--color-accent-soft),
+            0 10px 24px rgb(0 0 0 / 20%);
+        animation: cart-fab-attract 0.9s ease-in-out infinite alternate;
+
+        .app-icon {
+            width: 1.45rem;
+            height: 1.45rem;
+        }
+    }
+
+    &.is-drop-target {
+        animation: none;
+        transform: translateY(-2px) scale(1.35);
+        border-color: var(--color-accent);
+        background: var(--color-accent-soft);
+        box-shadow:
+            0 0 0 4px var(--color-accent-soft),
+            0 10px 24px rgb(0 0 0 / 18%);
     }
 
     .app-icon {
@@ -51,6 +76,17 @@
     }
 }
 
+// 拖动图标时采集按钮的呼吸放大
+@keyframes cart-fab-attract {
+    from {
+        transform: scale(1.16);
+    }
+
+    to {
+        transform: scale(1.3);
+    }
+}
+
 .cart-mask {
     position: fixed;
     inset: 0;
@@ -59,7 +95,7 @@
     backdrop-filter: blur(1px);
 }
 
-// ---------- 采集车面板 ----------
+// ---------- 采集面板 ----------
 .cart-drawer {
     position: fixed;
     top: 0;

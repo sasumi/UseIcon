@@ -97,14 +97,14 @@ export const createLibraryIcons = async (inputs: IconInput[]): Promise<LibraryIc
 };
 
 /** 批量保存公共库图标修改（编辑、批量优化、批量重命名共用） */
-export const saveLibraryIcons = (items: (LibraryIconPatch & { id: string })[]): Promise<LibraryIcon[]> =>
+export const saveLibraryIcons = (items: (LibraryIconPatch & { iconId: string })[]): Promise<LibraryIcon[]> =>
     iconPostJSON("library/saveBatch", { items: items.map((item) => ({ ...item, tags: item.tags && cleanTags(item.tags) })) }).then(
         (data) => (data?.list ?? []) as LibraryIcon[],
     );
 
 /** 更新单个公共库图标 */
 export const updateLibraryIcon = (iconId: string, patch: LibraryIconPatch): Promise<LibraryIcon> => {
-    const item: LibraryIconPatch & { id: string } = { id: iconId };
+    const item: LibraryIconPatch & { iconId: string } = { iconId };
     if (patch.className !== undefined) {
         item.className = sanitizeIconName(patch.className);
     }
@@ -129,15 +129,15 @@ export const deleteLibraryIcons = (iconIds: string[]): Promise<void> => {
     if (iconIds.length === 0) {
         return Promise.reject(new ApiError("请先选择图标"));
     }
-    return iconPostJSON("library/remove", { ids: iconIds }).then(() => undefined);
+    return iconPostJSON("library/remove", { icon_ids: iconIds }).then(() => undefined);
 };
 
 /** 批量优化公共库图标（SVG 处理在浏览器完成，结果一次性提交） */
 export const optimizeLibraryIcons = (icons: LibraryIcon[], options: IconOptimizeOptions): Promise<LibraryIcon[]> => {
-    const items: (LibraryIconPatch & { id: string })[] = [];
+    const items: (LibraryIconPatch & { iconId: string })[] = [];
     icons.forEach((icon) => {
         try {
-            items.push({ id: icon.id, svg: optimizeSvg(icon.svg, options) });
+            items.push({ iconId: icon.iconId, svg: optimizeSvg(icon.svg, options) });
         } catch (error) {
             console.warn(`公共库图标 ${icon.className} 优化失败`, error);
         }
@@ -158,7 +158,7 @@ export const renameLibraryIcons = (
         if (options.find) {
             className = className.split(options.find).join(options.replace || "");
         }
-        return { id: icon.id, className: `${options.prefix || ""}${className}${options.suffix || ""}` };
+        return { iconId: icon.iconId, className: `${options.prefix || ""}${className}${options.suffix || ""}` };
     });
     return saveLibraryIcons(items);
 };

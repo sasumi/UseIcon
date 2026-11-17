@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DropdownMenu, LoadingHolder, MenuItemDivider, Select, Toast } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
-import { CODE_TEMPLATE_PRESETS, DEFAULT_CODE_TEMPLATE, EXTMODE_CODE_HEIGHT_KEY, PROJECT_SORT_STORAGE_PREFIX } from "@/config";
+import { CODE_TEMPLATE_PRESETS, DEFAULT_CODE_TEMPLATE, DEFAULT_ICON_SIZE, EXTMODE_CODE_HEIGHT_KEY, PROJECT_SORT_STORAGE_PREFIX } from "@/config";
 import { navigate, extModePath, projectPath } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
 import { useCodeTypeStore } from "@/store/codeTypeStore";
@@ -212,7 +212,7 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
         setTemplateValue(value);
     };
 
-    const size = project?.iconSize || 24;
+    const size = DEFAULT_ICON_SIZE;
     const previewSize = display.size + display.padding * 2;
 
     const switchProject = (next: Project) => {
@@ -396,7 +396,7 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
                     <ul className="extmode-grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${Math.max(74, previewSize + 20)}px, 1fr))` }}>
                         {filtered.map((icon) => (
                             <li
-                                key={icon.id}
+                                key={icon.iconId}
                                 className="extmode-icon"
                                 draggable
                                 title={`${icon.className}${icon.tags.length > 0 ? ` · ${icon.tags.join(" · ")}` : ""}\n拖动或点击插入代码`}

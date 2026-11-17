@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { DIALOG_SIZE_LARGE, Dialog, Select, Toast } from "minreact-ui";
 import { api } from "@/api";
+import { ACCESS_TYPE_PUBLIC, ACCESS_TYPE_TEAM } from "@/config";
 import type { Project, ProjectRole } from "@/types";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/utils/permission";
 import { useDialogForm } from "@/hooks/useDialogForm";
 import { AppIcon } from "@/components/common/AppIcon";
 import { UserAvatar } from "@/components/common/UserAvatar";
 
-/** 项目成员与权限：可见性、游客开关与成员角色管理 */
+/** 项目成员与权限：访问权限与成员角色管理 */
 export const ProjectMembersDialog = ({
     open,
     setOpen,
@@ -28,7 +29,7 @@ export const ProjectMembersDialog = ({
         }
     }, [open]);
 
-    const updateVisibility = async (patch: Partial<Pick<Project, "visibility" | "allowGuest">>) => {
+    const updateAccess = async (patch: Partial<Pick<Project, "accessType">>) => {
         try {
             const updated = await api.projects.updateProject(project.id, patch);
             onUpdated(updated);
@@ -82,33 +83,29 @@ export const ProjectMembersDialog = ({
                     <div className="dialog-body">
                     <div className="ui-form">
                         <div className="ui-field">
-                            <label>可见性</label>
+                            <label>访问权限</label>
                             <Select
-                                key={`visibility-${project.visibility}`}
+                                key={`access-${project.accessType}`}
                                 items={[
-                                    { value: "team", label: "内部项目（仅成员可见）", icon: <AppIcon name="lock" /> },
-                                    { value: "public", label: "公开项目（登录用户可见）", icon: <AppIcon name="globe" /> },
+                                    { value: String(ACCESS_TYPE_TEAM), label: "团队项目（仅成员可见）", icon: <AppIcon name="lock" /> },
+                                    { value: String(ACCESS_TYPE_PUBLIC), label: "公开项目", icon: <AppIcon name="globe" /> },
                                 ]}
-                                value={project.visibility}
-                                onChange={(value) => void updateVisibility({ visibility: value as Project["visibility"] })}
+                                value={String(project.accessType)}
+                                onChange={(value) =>
+                                    void updateAccess({
+                                        accessType: Number(value) === ACCESS_TYPE_PUBLIC ? ACCESS_TYPE_PUBLIC : ACCESS_TYPE_TEAM,
+                                    })
+                                }
                                 triggerClassName="ui-btn"
                             />
                         </div>
-                        <label className="ui-switch-row">
-                            <span>允许游客使用（未登录可查看并复制代码）</span>
-                            <input
-                                type="checkbox"
-                                checked={project.allowGuest}
-                                onChange={(event) => void updateVisibility({ allowGuest: event.target.checked })}
-                            />
-                        </label>
                     </div>
 
                     <div className="settings-members">
                         <div className="settings-member-add">
                             <input
                                 className="ui-input"
-                                placeholder="成员邮箱或登录名（该用户需在本设备登录过）"
+                                placeholder="成员邮箱 / 登录名 / 昵称"
                                 value={memberAccount}
                                 onChange={(event) => setMemberAccount(event.target.value)}
                             />

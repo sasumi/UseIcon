@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { EmptyHolder, LoadingHolder, Menu, Popover } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import { api } from "@/api";
+import { ACCESS_TYPE_PUBLIC } from "@/config";
 import { useAuthStore } from "@/store/authStore";
 import type { Project } from "@/types";
 import { getProjectAccess } from "@/utils/permission";
@@ -66,7 +67,7 @@ export const ProjectPicker = ({
     const items: MenuEntry[] = visible.map((project) => ({
         value: project.id,
         label: project.name,
-        icon: <AppIcon name={project.visibility === "public" ? "globe" : "lock"} />,
+        icon: <AppIcon name={project.accessType === ACCESS_TYPE_PUBLIC ? "globe" : "lock"} />,
         disabled: project.id === currentId,
     }));
 

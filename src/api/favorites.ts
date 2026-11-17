@@ -10,7 +10,7 @@ export const listFavorites = (): Promise<FavoriteIcon[]> =>
     iconGetJSON("favorite/getList").then((data) => (data?.list ?? []) as FavoriteIcon[]);
 
 /**
- * 添加收藏：同一公共库图标 / 同一项目图标只保留一条
+ * 添加收藏：同一来源图标（refId）只保留一条
  */
 export const addFavorite = (input: {
     className: string;
@@ -18,7 +18,7 @@ export const addFavorite = (input: {
     svg: string;
     tags?: string[];
     source: "library" | "project";
-    libraryId?: string;
+    refId?: string;
     projectId?: string;
 }): Promise<FavoriteIcon> => {
     let svg: string;
@@ -33,7 +33,7 @@ export const addFavorite = (input: {
         svg,
         tags: cleanTags(input.tags),
         source: input.source,
-        libraryId: input.libraryId,
+        refId: input.refId,
         projectId: input.projectId,
     });
 };

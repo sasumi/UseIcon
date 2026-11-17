@@ -4,8 +4,8 @@ export type ThemeMode = "light" | "dark" | "auto";
 /** 项目内角色：管理员 / 协作人员 / 普通用户 */
 export type ProjectRole = "admin" | "editor" | "viewer";
 
-/** 项目可见性：team 内部项目（仅成员）；public 公开项目（游客可用） */
-export type ProjectVisibility = "team" | "public";
+/** 项目访问类型：0 团队（仅成员）；1 公开 */
+export type ProjectAccessType = 0 | 1;
 
 /** 用户（来自 api.tthaoke.com，字段对齐后端 baseInfo） */
 export interface User {
@@ -37,7 +37,7 @@ export interface FavoriteIcon {
     svg: string; // SVG 源码
     tags: string[]; // 个人标签
     source: "library" | "project"; // 来源类型
-    libraryId?: string; // 来源公共库 ID
+    refId?: string; // 来源图标 ID（icon_id）
     projectId?: string; // 来源项目 ID
     createdAt: number; // 收藏时间
     updatedAt: number; // 更新时间
@@ -45,13 +45,12 @@ export interface FavoriteIcon {
 
 /** 项目 */
 export interface Project {
-    id: string; // 项目 ID
+    id: string; // 项目 ID（project_id）
     name: string; // 项目名
     description: string; // 项目描述
     ownerId: string; // 创建者用户 ID
-    visibility: ProjectVisibility; // 可见性
-    allowGuest: boolean; // 是否允许游客使用
-    iconSize: number; // 导出/拖拽代码的默认尺寸
+    accessType: ProjectAccessType; // 访问类型：0 团队（仅成员）/ 1 公开
+    categoryCache: string[]; // 分类缓存（用户用过的分类，供快速选择）
     codeTemplate: string; // 代码模板
     members: ProjectMember[]; // 成员列表
     createdAt: number; // 创建时间戳
@@ -73,26 +72,25 @@ export interface LibraryCategoryCount {
 
 /** 项目图标 */
 export interface IconItem {
-    id: string; // 图标 ID
+    iconId: string; // 图标 ID（随机字符串）
     projectId: string; // 所属项目 ID
     className: string; // 图标类名（用于代码模板）
     category?: string; // 分类
     svg: string; // 标准化的 SVG 源码
     tags: string[]; // 标签
-    libraryId?: string; // 来自公共库时的引用 ID
+    refId?: string; // 来源图标 ID（从公共库或其他项目复制时记录）
     createdBy: string; // 创建者用户 ID
     createdAt: number; // 创建时间戳
     updatedAt: number; // 更新时间戳
     order?: number; // 自定义排序序号（升序，越小越靠前）
 }
 
-/** 公共库图标 */
 /** 图标局部更新（批量优化 / 重命名等场景返回的最小字段集合） */
-export type IconPatch = Pick<IconItem, "id" | "className" | "svg" | "tags"> & Partial<IconItem>;
+export type IconPatch = Pick<IconItem, "iconId" | "className" | "svg" | "tags"> & Partial<IconItem>;
 
-/** 公共库图标（来自 uiapi 的 ui_icon 表，project_id=library） */
+/** 公共库图标（与项目图标同表，project_id=library） */
 export interface LibraryIcon {
-    id: string; // 图标 ID
+    iconId: string; // 图标 ID（随机字符串）
     className: string; // 图标类名
     svg: string; // SVG 源码
     category: string; // 分类
@@ -130,7 +128,7 @@ export interface IconInput {
     className: string; // 图标类名
     svg: string; // SVG 源码
     tags?: string[]; // 标签
-    libraryId?: string; // 公共库引用 ID
+    refId?: string; // 来源图标 ID（公共库或其他项目的 icon_id）
     category?: string; // 分类
 }
 

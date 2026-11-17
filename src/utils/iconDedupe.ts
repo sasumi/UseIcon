@@ -1,11 +1,11 @@
-/** 图标去重键：公共库引用 ID 优先，其次类名（小写） */
-export const iconKeyOf = (icon: { className: string; libraryId?: string }): string =>
-    icon.libraryId ? `library:${icon.libraryId}` : `class:${icon.className.trim().toLowerCase()}`;
+/** 图标去重键：来源图标 ID 优先，其次类名（小写） */
+export const iconKeyOf = (icon: { className: string; refId?: string }): string =>
+    icon.refId ? `ref:${icon.refId}` : `class:${icon.className.trim().toLowerCase()}`;
 
-/** 收藏去重键：公共库来源按库内 ID，项目来源按项目 + 类名 */
-export const favoriteKeyOf = (icon: { className: string; libraryId?: string; projectId?: string }): string => {
-    if (icon.libraryId) {
-        return `library:${icon.libraryId}`;
+/** 收藏去重键：来源图标 ID 优先，其次项目 + 类名 */
+export const favoriteKeyOf = (icon: { className: string; refId?: string; projectId?: string }): string => {
+    if (icon.refId) {
+        return `ref:${icon.refId}`;
     }
     if (icon.projectId) {
         return `project:${icon.projectId}:${icon.className.trim().toLowerCase()}`;
@@ -14,13 +14,13 @@ export const favoriteKeyOf = (icon: { className: string; libraryId?: string; pro
 };
 
 /**
- * 剔除已存在 / 本批重复的候选图标（公共库引用 ID 或类名相同都算重复）
+ * 剔除已存在 / 本批重复的候选图标（来源图标 ID 或类名相同都算重复）
  * @param candidates 待加入的图标
  * @param existing 目标项目已有图标
  */
-export const filterDuplicateIcons = <T extends { className: string; libraryId?: string }>(
+export const filterDuplicateIcons = <T extends { className: string; refId?: string }>(
     candidates: T[],
-    existing: { className: string; libraryId?: string }[],
+    existing: { className: string; refId?: string }[],
 ): { kept: T[]; ignored: number } => {
     const keys = new Set(existing.map(iconKeyOf));
     const names = new Set(existing.map((icon) => icon.className.trim().toLowerCase()));

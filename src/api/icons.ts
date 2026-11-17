@@ -9,9 +9,9 @@ const cleanTags = (tags: string[] | undefined): string[] =>
 export const listIcons = (projectId: string): Promise<IconItem[]> =>
     iconGetJSON("icon/getList", { project_id: projectId }).then((data) => (data?.list ?? []) as IconItem[]);
 
-/** 按 ID 批量取图标 */
+/** 按 icon_id 批量取图标 */
 export const listIconsByIds = (iconIds: string[]): Promise<IconItem[]> =>
-    iconGetJSON("icon/getListByIds", { ids: iconIds.join(",") }).then((data) => (data?.list ?? []) as IconItem[]);
+    iconGetJSON("icon/getListByIds", { icon_ids: iconIds.join(",") }).then((data) => (data?.list ?? []) as IconItem[]);
 
 /** 单次提交给后台的图标数量上限（多出来的分多次提交） */
 const CREATE_CHUNK_SIZE = 100;
@@ -28,7 +28,7 @@ export const createIcons = async (projectId: string, inputs: IconInput[]): Promi
         } catch {
             throw new ApiError(`图标「${input.className}」的 SVG 无法解析`, "invalid-svg");
         }
-        return { className: input.className, category: input.category?.trim() || "", svg, tags: cleanTags(input.tags), libraryId: input.libraryId };
+        return { className: input.className, category: input.category?.trim() || "", svg, tags: cleanTags(input.tags), refId: input.refId };
     });
 
     const created: IconItem[] = [];
@@ -40,12 +40,12 @@ export const createIcons = async (projectId: string, inputs: IconInput[]): Promi
     return created;
 };
 
-/** 从公共库添加图标（由后台按公共库数据复制快照） */
-export const addIconsFromLibrary = (projectId: string, libraryIds: string[]): Promise<IconItem[]> => {
-    if (libraryIds.length === 0) {
+/** 从公共库添加图标（由后台按公共库数据复制快照，ref_id 记公共库图标的 icon_id） */
+export const addIconsFromLibrary = (projectId: string, iconIds: string[]): Promise<IconItem[]> => {
+    if (iconIds.length === 0) {
         return Promise.reject(new ApiError("请选择公共库图标"));
     }
-    return iconPostJSON("icon/addFromLibrary", { project_id: projectId, library_ids: libraryIds }).then(
+    return iconPostJSON("icon/addFromLibrary", { project_id: projectId, icon_ids: iconIds }).then(
         (data) => (data?.list ?? []) as IconItem[],
     );
 };
@@ -55,7 +55,7 @@ export const updateIcon = (
     iconId: string,
     patch: Partial<Pick<IconItem, "className" | "category" | "svg" | "tags">>,
 ): Promise<IconItem> => {
-    const item: Record<string, unknown> = { id: iconId };
+    const item: Record<string, unknown> = { iconId };
     if (patch.className !== undefined) {
         item.className = sanitizeIconName(patch.className);
     }
@@ -80,7 +80,7 @@ export const deleteIcons = (iconIds: string[]): Promise<void> => {
     if (iconIds.length === 0) {
         return Promise.reject(new ApiError("请先选择图标"));
     }
-    return iconPostJSON("icon/remove", { ids: iconIds }).then(() => undefined);
+    return iconPostJSON("icon/remove", { icon_ids: iconIds }).then(() => undefined);
 };
 
 /** 保存自定义排序（按传入顺序写入排序号） */
@@ -88,7 +88,7 @@ export const reorderIcons = (projectId: string, orderedIds: string[]): Promise<v
     if (orderedIds.length === 0) {
         return Promise.reject(new ApiError("没有可排序的图标"));
     }
-    return iconPostJSON("icon/reorder", { project_id: projectId, ids: orderedIds }).then(() => undefined);
+    return iconPostJSON("icon/reorder", { project_id: projectId, icon_ids: orderedIds }).then(() => undefined);
 };
 
 /** 批量优化图标（SVG 处理在浏览器完成，结果一次性提交） */
@@ -97,10 +97,10 @@ export const optimizeIcons = async (iconIds: string[], options: IconOptimizeOpti
         throw new ApiError("请先选择图标");
     }
     const icons = await listIconsByIds(iconIds);
-    const items: { id: string; svg: string }[] = [];
+    const items: { iconId: string; svg: string }[] = [];
     icons.forEach((icon) => {
         try {
-            items.push({ id: icon.id, svg: optimizeSvg(icon.svg, options) });
+            items.push({ iconId: icon.iconId, svg: optimizeSvg(icon.svg, options) });
         } catch (error) {
             console.warn(`图标 ${icon.className} 优化失败`, error);
         }
@@ -127,7 +127,7 @@ export const renameIcons = (
                 if (options.find) {
                     className = className.split(options.find).join(options.replace || "");
                 }
-                return { id: icon.id, className: `${options.prefix || ""}${className}${options.suffix || ""}` };
+                return { iconId: icon.iconId, className: `${options.prefix || ""}${className}${options.suffix || ""}` };
             });
             return iconPostJSON("icon/saveBatch", { items });
         })

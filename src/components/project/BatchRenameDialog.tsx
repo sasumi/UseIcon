@@ -70,7 +70,7 @@ export const BatchRenameDialog = ({
                             </div>
                             <div className="ui-field">
                                 <label>查找替换</label>
-                                <div className="ui-row">
+                                <div className="ui-label-check">
                                     <input className="ui-input" placeholder="查找" value={find} onChange={(event) => setFind(event.target.value)} />
                                     <input className="ui-input" placeholder="替换为" value={replace} onChange={(event) => setReplace(event.target.value)} />
                                 </div>

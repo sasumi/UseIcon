@@ -1,4 +1,4 @@
-import type { PageResult, Project, ProjectRole, ProjectVisibility } from "@/types";
+import type { PageResult, Project, ProjectAccessType, ProjectRole } from "@/types";
 import { iconGetJSON, iconPostJSON } from "./http";
 
 /** 项目列表（当前用户可见的项目，按更新时间倒序） */
@@ -24,26 +24,22 @@ export const getProject = (projectId: string): Promise<Project> => iconGetJSON("
 export const createProject = (input: {
     name: string;
     description?: string;
-    visibility?: ProjectVisibility;
-    allowGuest?: boolean;
-    iconSize?: number;
+    accessType?: ProjectAccessType;
 }): Promise<Project> =>
     iconPostJSON("project/create", {
         name: input.name,
         description: input.description ?? "",
-        visibility: input.visibility,
-        allow_guest: input.allowGuest,
-        icon_size: input.iconSize,
+        access_type: input.accessType,
     });
 
-/** 新用户首次登录时分配一个属于自己的初始项目（仅一次，且已有项目时跳过） */
+/** 新用户首次登录时分配一个属于自己的初始项目（已有项目时跳过） */
 export const ensureStarterProject = (): Promise<Project | null> =>
     iconPostJSON("project/ensureStarter", {}).then((data) => (data?.project ?? null) as Project | null);
 
 /** 更新项目设置 */
 export const updateProject = (
     projectId: string,
-    patch: Partial<Pick<Project, "name" | "description" | "visibility" | "allowGuest" | "iconSize" | "codeTemplate">>,
+    patch: Partial<Pick<Project, "name" | "description" | "accessType" | "codeTemplate">>,
 ): Promise<Project> => {
     const payload: Record<string, unknown> = { id: projectId };
     if (patch.name !== undefined) {
@@ -52,14 +48,8 @@ export const updateProject = (
     if (patch.description !== undefined) {
         payload.description = patch.description;
     }
-    if (patch.visibility !== undefined) {
-        payload.visibility = patch.visibility;
-    }
-    if (patch.allowGuest !== undefined) {
-        payload.allow_guest = patch.allowGuest;
-    }
-    if (patch.iconSize !== undefined) {
-        payload.icon_size = patch.iconSize;
+    if (patch.accessType !== undefined) {
+        payload.access_type = patch.accessType;
     }
     if (patch.codeTemplate !== undefined) {
         payload.code_template = patch.codeTemplate;

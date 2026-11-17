@@ -172,12 +172,6 @@
     align-items: center;
     gap: 0.35rem;
     flex-wrap: wrap;
-
-    .batch-actions__count {
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: var(--color-accent);
-    }
 }
 
 // ---------- 图标卡片 ----------
@@ -385,9 +379,74 @@ body.is-drag-selecting {
     }
 }
 
+// ---------- 多选拖拽的拖拽影像（叠放卡片 + 数量） ----------
+.icon-drag-proxy {
+    position: fixed;
+    top: 0;
+    left: -9999px;
+    width: 4.3rem;
+    height: 4.3rem;
+    z-index: 9999;
+    pointer-events: none;
+
+    .icon-drag-proxy__layer,
+    .icon-drag-proxy__card {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 3.2rem;
+        height: 3.2rem;
+        border: 1px solid var(--color-border);
+        border-radius: calc(var(--element-radius) + 2px);
+        background: var(--color-surface);
+        box-shadow: 0 6px 16px rgb(0 0 0 / 18%);
+    }
+
+    .icon-drag-proxy__layer--back {
+        transform: translate(1.1rem, -1.1rem);
+        opacity: 0.5;
+    }
+
+    .icon-drag-proxy__layer--mid {
+        transform: translate(0.55rem, -0.55rem);
+        opacity: 0.8;
+    }
+
+    .icon-drag-proxy__card {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem;
+        color: var(--color-accent);
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+    }
+
+    .icon-drag-proxy__badge {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        min-width: 1.2rem;
+        height: 1.2rem;
+        padding: 0 0.28rem;
+        border-radius: 999px;
+        background: var(--color-accent);
+        color: #fff;
+        font-size: 0.62rem;
+        font-weight: 600;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
 // ---------- 侧栏项目列表 ----------
 .project-list__search {
-    margin: 0 0.1rem 0.45rem;
+    margin: 0;
     font-size: 0.76rem;
     min-width: 0;
     flex: 1 1 auto;

@@ -34,7 +34,8 @@ const IGNORE_SELECTOR = [
 ].join(", ");
 
 /**
- * 图标列表拖选：在页面任意位置按下拖动即可拉出选框，框到带 data-select-id 的条目即选中（类似资源管理器）
+ * 图标列表拖选：只在内容区（content-panel）内按下拖动即可拉出选框，选框可拖出该区域继续框选；
+ * 框到带 data-select-id 的条目即选中（类似资源管理器）
  * @returns 当前选框（未拖选时为 null），由调用方渲染选框元素
  */
 export const useDragSelect = ({
@@ -129,7 +130,16 @@ export const useDragSelect = ({
                 return;
             }
             const target = event.target as HTMLElement | null;
-            if (target?.closest(IGNORE_SELECTOR)) {
+            if (!target || target.closest(IGNORE_SELECTOR)) {
+                return;
+            }
+            // 从可拖拽元素（图标卡片等）按下时交给原生拖拽，避免拉出选框误改选择
+            if (target.closest("[draggable='true']")) {
+                return;
+            }
+            // 只允许在内容区内开始拖选（结束位置不限，可拖到侧栏等其他区域）
+            const panel = container.closest(".content-panel");
+            if (!panel || !panel.contains(target)) {
                 return;
             }
             // 拖动滚动条不触发框选

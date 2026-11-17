@@ -19,7 +19,7 @@ export const exportSvgZip = async (icons: IconItem[], projectName: string): Prom
     folder.file(
         "icons.json",
         JSON.stringify(
-            icons.map((icon) => ({ className: icon.className, tags: icon.tags, libraryId: icon.libraryId })),
+            icons.map((icon) => ({ className: icon.className, tags: icon.tags, refId: icon.refId })),
             null,
             2,
         ),
@@ -96,7 +96,7 @@ const buildIconfontReadme = (projectName: string, count: number): string => `# $
 
 ## 生成字体
 1. 打开 https://www.iconfont.cn/ ，新建/进入一个项目；
-2. 点击「上传图标」，选择本压缩包中 svg/ 目录下的全部 .svg 文件；
+2. 点击「上传」，选择本压缩包中 svg/ 目录下的全部 .svg 文件；
 3. 在项目中点击「下载至本地」，得到 iconfont.js / iconfont.css / 字体文件；
 4. 用本包提供的 iconfont.css 覆盖下载包中的同名文件（或直接参考其类名与 unicode）。
 

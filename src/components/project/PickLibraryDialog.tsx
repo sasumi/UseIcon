@@ -7,6 +7,7 @@ import type { LibraryIcon } from "@/types";
 import { filterDuplicateIcons } from "@/utils/iconDedupe";
 import { AppIcon } from "@/components/common/AppIcon";
 import { EmptyState } from "@/components/common/EmptyState";
+import { SelectAllToggle } from "@/components/common/SelectAllToggle";
 import { SvgPreview } from "@/components/common/SvgPreview";
 
 /** 从公共库挑选图标加入项目 */
@@ -69,7 +70,7 @@ export const PickLibraryDialog = ({
             if (category && icon.category !== category) {
                 return false;
             }
-            if (onlyFavorite && !favorites.some((item) => item.libraryId === icon.id)) {
+            if (onlyFavorite && !favorites.some((item) => item.refId === icon.iconId)) {
                 return false;
             }
             if (!query) {
@@ -83,6 +84,12 @@ export const PickLibraryDialog = ({
         setSelected((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
     };
 
+    const selectedCount = useMemo(() => filtered.filter((icon) => selected.includes(icon.iconId)).length, [filtered, selected]);
+
+    const toggleSelectAll = (checked: boolean) => {
+        setSelected(checked ? filtered.map((icon) => icon.iconId) : []);
+    };
+
     const submit = async () => {
         if (selected.length === 0) {
             Toast.showWarning("请先选择图标");
@@ -92,7 +99,7 @@ export const PickLibraryDialog = ({
         try {
             // 目标项目已有的图标（公共库 ID 或类名相同）直接跳过
             const projectIcons = await api.icons.listIcons(projectId);
-            const chosen = icons.filter((icon) => selected.includes(icon.id));
+            const chosen = icons.filter((icon) => selected.includes(icon.iconId));
             const { kept, ignored } = filterDuplicateIcons(chosen, projectIcons);
             if (kept.length === 0) {
                 Toast.showInfo(`所选 ${ignored} 个图标都已在项目中，已忽略`);
@@ -100,7 +107,7 @@ export const PickLibraryDialog = ({
             }
             const created = await api.icons.addIconsFromLibrary(
                 projectId,
-                kept.map((icon) => icon.id),
+                kept.map((icon) => icon.iconId),
             );
             Toast.showSuccess(`已加入 ${created.length} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在的图标` : ""}`);
             setOpen(false);
@@ -128,12 +135,12 @@ export const PickLibraryDialog = ({
                                 onChange={(event) => setKeyword(event.target.value)}
                             />
                         </div>
-                        <label className="ui-row ui-note">
+                        <label className="ui-label-check ui-note">
                             <input type="checkbox" checked={onlyFavorite} onChange={(event) => setOnlyFavorite(event.target.checked)} />
                             只看我的收藏
                         </label>
                         <div className="spacer" />
-                        <span className="ui-note">已选 {selected.length} 个</span>
+                        <SelectAllToggle selected={selectedCount} total={filtered.length} onChange={toggleSelectAll} />
                     </div>
 
                     <div className="category-chips">
@@ -150,14 +157,14 @@ export const PickLibraryDialog = ({
                     <ul className="library-pick-grid">
                         {filtered.map((icon) => (
                             <li
-                                key={icon.id}
-                                className={`library-pick ${selected.includes(icon.id) ? "selected" : ""}`}
-                                onClick={() => toggle(icon.id)}
+                                key={icon.iconId}
+                                className={`library-pick ${selected.includes(icon.iconId) ? "selected" : ""}`}
+                                onClick={() => toggle(icon.iconId)}
                                 title={`${icon.className}${icon.tags.length > 0 ? ` · ${icon.tags.join(" · ")}` : ""}`}
                             >
                                 <SvgPreview svg={icon.svg} size={24} />
                                 <span className="library-pick__name">{icon.className}</span>
-                                {selected.includes(icon.id) && (
+                                {selected.includes(icon.iconId) && (
                                     <span className="library-pick__check">
                                         <AppIcon name="check" />
                                     </span>

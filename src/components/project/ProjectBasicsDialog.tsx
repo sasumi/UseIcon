@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { DIALOG_SIZE_NORMAL, Dialog, Toast } from "minreact-ui";
 import { api } from "@/api";
-import { DEFAULT_ICON_SIZE } from "@/config";
 import { useDialogForm } from "@/hooks/useDialogForm";
 import type { Project } from "@/types";
 
-/** 项目基础设置：名称、描述、默认图标尺寸与删除项目 */
+/** 项目基础设置：名称、描述与删除项目 */
 export const ProjectBasicsDialog = ({
     open,
     setOpen,
@@ -37,7 +36,6 @@ export const ProjectBasicsDialog = ({
             const updated = await api.projects.updateProject(project.id, {
                 name: draft.name,
                 description: draft.description,
-                iconSize: draft.iconSize,
             });
             onUpdated(updated);
             Toast.showSuccess("基础设置已保存");
@@ -92,18 +90,6 @@ export const ProjectBasicsDialog = ({
                                     value={draft.description}
                                     onChange={(event) => setDraft({ ...draft, description: event.target.value })}
                                 />
-                            </div>
-                            <div className="ui-field">
-                                <label>默认图标尺寸（px）</label>
-                                <input
-                                    className="ui-input"
-                                    type="number"
-                                    min={12}
-                                    max={96}
-                                    value={draft.iconSize}
-                                    onChange={(event) => setDraft({ ...draft, iconSize: Number(event.target.value) || DEFAULT_ICON_SIZE })}
-                                />
-                                <span className="ui-field-tip">拓展模式与拖拽生成的代码会使用这个尺寸</span>
                             </div>
                         </div>
                     </div>

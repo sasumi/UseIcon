@@ -24,14 +24,17 @@ const NAV_ITEMS = [
 export const AppShell = ({ route, children }: { route: Route; children: ReactNode }) => {
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
-    const favorites = useLibraryStore((state) => state.favorites);
     const setLoginOpen = useLoginDialogStore((state) => state.setOpen);
     const [profileOpen, setProfileOpen] = useState(false);
     const [optionsOpen, setOptionsOpen] = useState(false);
     const [donateOpen, setDonateOpen] = useState(false);
 
+    // 收藏数据供公共库 / 项目页展示收藏状态；失败时静默，各页面会自行提示
     useEffect(() => {
-        void useLibraryStore.getState().fetchFavorites();
+        void useLibraryStore
+            .getState()
+            .fetchFavorites()
+            .catch(() => undefined);
     }, [user?.id]);
 
     const activeKey = route.name === "project" || route.name === "extMode" ? "projects" : route.name;
@@ -89,7 +92,6 @@ export const AppShell = ({ route, children }: { route: Route; children: ReactNod
                         onKeyDown={(event) => event.key === "Enter" && navigate(item.path)}
                     >
                         <AppIcon name={item.icon} />
-                        {item.key === "favorites" && favorites.length > 0 && <span className="activity-badge">{favorites.length}</span>}
                     </span>
                 ))}
                 <div className="spacer" />

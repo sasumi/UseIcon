@@ -16,7 +16,7 @@ import { SvgCodeDialog } from "@/components/project/SvgCodeDialog";
 const DIALOG_WIDTH = "38em";
 
 /** 详情对话框使用的图标字段（项目图标 / 公共库图标通用） */
-export type IconDetailTarget = Pick<IconItem, "id" | "className" | "svg" | "tags"> & { category?: string };
+export type IconDetailTarget = Pick<IconItem, "iconId" | "className" | "svg" | "tags"> & { category?: string };
 
 /** 详情保存入参（svg 已应用外观调整） */
 export interface IconDetailPatch {
@@ -49,10 +49,10 @@ export const IconDetailDialog = ({
     template?: string; // 代码模板
     size?: number; // 图标尺寸
     favorite?: boolean; // 是否已收藏
-    inCart?: boolean; // 是否已在采集车
+    inCart?: boolean; // 是否已在采集
     categories?: string[]; // 可选分类（提供时显示分类编辑）
     onFavorite?: () => void; // 收藏切换
-    onCart?: () => void; // 采集车切换
+    onCart?: () => void; // 采集切换
     onSave: (patch: IconDetailPatch) => Promise<void>; // 保存
     onDelete?: () => void; // 删除
 }) => {
@@ -178,7 +178,7 @@ export const IconDetailDialog = ({
                                     <button
                                         className={`icon-card__quick-btn ${inCart ? "active-cart" : ""}`}
                                         type="button"
-                                        title={inCart ? "移出采集车" : "加入采集车"}
+                                        title={inCart ? "移出采集" : "采集"}
                                         onClick={onCart}
                                     >
                                         <AppIcon name="cart" />

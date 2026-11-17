@@ -2,34 +2,35 @@ import { CART_STORAGE_KEY } from "@/config";
 import type { IconInput } from "@/types";
 import { create } from "zustand";
 
-/** 采集车条目 */
+/** 采集条目 */
 export interface CartItem {
     key: string; // 唯一键
     className: string; // 图标类名
     tags: string[]; // 标签
     svg: string; // SVG 源码
     source: "library" | "project"; // 来源
-    libraryId?: string; // 公共库 ID
+    refId?: string; // 来源图标 ID（icon_id）
     projectId?: string; // 来源项目
-    iconId?: string; // 来源项目图标 ID
 }
 
 interface CartState {
     items: CartItem[]; // 车内条目
     open: boolean; // 面板是否展开
     setOpen: (open: boolean) => void; // 控制面板
-    add: (item: CartItem) => boolean; // 加入采集车，返回是否新增
+    add: (item: CartItem) => boolean; // 采集，返回是否新增
     remove: (key: string) => void; // 移除
     toggle: (item: CartItem) => void; // 加入 / 移出
     clear: () => void; // 清空
     has: (key: string) => boolean; // 是否已在车内
 }
 
-/** 读取采集车（兼容旧版 name / title 结构） */
+/** 读取采集（兼容旧版 name / title / libraryId / iconId 结构） */
 const readCart = (): CartItem[] => {
     try {
         const raw = localStorage.getItem(CART_STORAGE_KEY);
-        const list = raw ? (JSON.parse(raw) as (CartItem & { name?: string; title?: string })[]) : [];
+        const list = raw
+            ? (JSON.parse(raw) as (CartItem & { name?: string; title?: string; libraryId?: string; iconId?: string })[])
+            : [];
         if (!Array.isArray(list)) {
             return [];
         }
@@ -39,9 +40,8 @@ const readCart = (): CartItem[] => {
             tags: Array.isArray(item.tags) ? item.tags : [],
             svg: item.svg,
             source: item.source,
-            libraryId: item.libraryId,
+            refId: item.refId || item.libraryId || item.iconId,
             projectId: item.projectId,
-            iconId: item.iconId,
         }));
     } catch {
         return [];
@@ -88,42 +88,45 @@ export const useCartStore = create<CartState>((set, get) => ({
     has: (key) => get().items.some((item) => item.key === key),
 }));
 
-/** 公共库图标 → 采集车条目 */
-export const cartItemFromLibrary = (icon: { id: string; className: string; tags: string[]; svg: string }): CartItem => ({
-    key: `library:${icon.id}`,
+/** 公共库图标 → 采集条目 */
+export const cartItemFromLibrary = (icon: { iconId: string; className: string; tags: string[]; svg: string }): CartItem => ({
+    key: `library:${icon.iconId}`,
     className: icon.className,
     tags: icon.tags,
     svg: icon.svg,
     source: "library",
-    libraryId: icon.id,
+    refId: icon.iconId,
 });
 
-/** 项目图标 → 采集车条目 */
-export const cartItemFromProjectIcon = (projectId: string, icon: { id: string; className: string; tags: string[]; svg: string }): CartItem => ({
-    key: `project:${projectId}:${icon.id}`,
+/** 项目图标 → 采集条目 */
+export const cartItemFromProjectIcon = (projectId: string, icon: { iconId: string; className: string; tags: string[]; svg: string }): CartItem => ({
+    key: `project:${projectId}:${icon.iconId}`,
     className: icon.className,
     tags: icon.tags,
     svg: icon.svg,
     source: "project",
     projectId,
-    iconId: icon.id,
+    refId: icon.iconId,
 });
 
-/** 收藏项 → 采集车条目 */
-export const cartItemFromFavorite = (favorite: { id: string; className: string; tags: string[]; svg: string; libraryId?: string }): CartItem => ({
-    key: favorite.libraryId ? `library:${favorite.libraryId}` : `favorite:${favorite.id}`,
+/** 收藏项 → 采集条目 */
+export const cartItemFromFavorite = (
+    favorite: { id: string; className: string; tags: string[]; svg: string; source: "library" | "project"; refId?: string; projectId?: string },
+): CartItem => ({
+    key: favorite.refId ? `ref:${favorite.refId}` : `favorite:${favorite.id}`,
     className: favorite.className,
     tags: favorite.tags,
     svg: favorite.svg,
-    source: favorite.libraryId ? "library" : "project",
-    libraryId: favorite.libraryId,
+    source: favorite.source,
+    refId: favorite.refId,
+    projectId: favorite.projectId,
 });
 
-/** 采集车条目 → 新建图标入参 */
+/** 采集条目 → 新建图标入参（ref_id 记录来源图标的 icon_id） */
 export const cartItemsToInputs = (items: CartItem[]): IconInput[] =>
     items.map((item) => ({
         className: item.className,
         svg: item.svg,
         tags: item.tags,
-        libraryId: item.libraryId,
+        refId: item.refId,
     }));

@@ -101,14 +101,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     },
     setCurrent: (project) => set({ current: project }),
     updateIcons: (updated) => {
-        const map = new Map(updated.map((icon) => [icon.id, icon]));
-        set({ icons: get().icons.map((icon) => (map.has(icon.id) ? { ...icon, ...map.get(icon.id) } : icon)) });
+        const map = new Map(updated.map((icon) => [icon.iconId, icon]));
+        set({ icons: get().icons.map((icon) => (map.has(icon.iconId) ? { ...icon, ...map.get(icon.iconId) } : icon)) });
     },
     setIconsOrder: (orderedIds) => {
-        const map = new Map(get().icons.map((icon) => [icon.id, icon]));
+        const map = new Map(get().icons.map((icon) => [icon.iconId, icon]));
         const next = orderedIds.map((id) => map.get(id)).filter((icon): icon is IconItem => Boolean(icon));
         get().icons.forEach((icon) => {
-            if (!orderedIds.includes(icon.id)) {
+            if (!orderedIds.includes(icon.iconId)) {
                 next.push(icon);
             }
         });
@@ -116,7 +116,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     },
     removeIcons: (iconIds) => {
         const ids = new Set(iconIds);
-        set({ icons: get().icons.filter((icon) => !ids.has(icon.id)) });
+        set({ icons: get().icons.filter((icon) => !ids.has(icon.iconId)) });
     },
     reset: () =>
         set({

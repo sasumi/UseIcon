@@ -196,7 +196,7 @@ export const UploadDialog = ({
                 className: `${prefix}${item.className}`,
                 svg: item.svg,
                 tags: item.tags,
-                libraryId: item.libraryId,
+                refId: item.refId,
             }));
             if (target === "library") {
                 await api.library.createLibraryIcons(inputs);

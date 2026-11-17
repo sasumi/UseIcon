@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { DIALOG_SIZE_SMALL, Dialog, DropdownMenu, Toast } from "minreact-ui";
+import { DIALOG_SIZE_SMALL, Dialog, DropdownMenu, LoadingHolder, Toast, useAsync } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
 import type { FavoriteIcon, IconItem } from "@/types";
 import { DEFAULT_ICON_SIZE, FAVORITES_SORT_STORAGE_KEY } from "@/config";
@@ -16,6 +16,7 @@ import { rememberCategory } from "@/utils/category";
 import { AppIcon } from "@/components/common/AppIcon";
 import { CategoryInput } from "@/components/common/CategoryInput";
 import { EmptyState } from "@/components/common/EmptyState";
+import { SelectAllToggle } from "@/components/common/SelectAllToggle";
 import { SvgPreview } from "@/components/common/SvgPreview";
 import { TagEditor } from "@/components/common/TagEditor";
 import { TipBubble } from "@/components/common/TipBubble";
@@ -62,15 +63,16 @@ export const FavoritesPage = () => {
     const [sortMode, setSortMode] = useState<FavoritesSortMode>(readSortMode);
     const [selected, setSelected] = useState<string[]>([]);
     const [editing, setEditing] = useState<FavoriteIcon | null>(null);
+    const [reloadToken, setReloadToken] = useState(0);
     const gridRef = useRef<HTMLUListElement | null>(null);
 
-    useClearOnBlankClick(() => setSelected((prev) => (prev.length === 0 ? prev : [])));
+    // 收藏加载统一走 useAsync：加载中 / 出错 / 空数据互不混淆
+    const favoritesState = useAsync(() => (user ? fetchFavorites() : Promise.resolve<FavoriteIcon[]>([])), [
+        user?.id,
+        reloadToken,
+    ]);
 
-    useEffect(() => {
-        if (user) {
-            void fetchFavorites();
-        }
-    }, [user, fetchFavorites]);
+    useClearOnBlankClick(() => setSelected((prev) => (prev.length === 0 ? prev : [])));
 
     const categories = useMemo(
         () => Array.from(new Set(favorites.map((item) => item.category || "").filter(Boolean))).sort((a, b) => a.localeCompare(b, "zh-CN")),
@@ -137,7 +139,11 @@ export const FavoritesPage = () => {
     };
 
     const selectedFavorites = useMemo(() => favorites.filter((item) => selected.includes(item.id)), [favorites, selected]);
-    const allSelected = filtered.length > 0 && filtered.every((item) => selected.includes(item.id));
+    const selectedCount = useMemo(() => filtered.filter((item) => selected.includes(item.id)).length, [filtered, selected]);
+
+    /** 拖拽到采集按钮时携带的条目：拖的是选中项就带上全部选中 */
+    const dragItemsOf = (favorite: FavoriteIcon) =>
+        (selected.length > 1 && selected.includes(favorite.id) ? selectedFavorites : [favorite]).map(cartItemFromFavorite);
 
     const toggleSelect = (id: string, checked: boolean) => {
         setSelected((prev) => (checked ? Array.from(new Set([...prev, id])) : prev.filter((item) => item !== id)));
@@ -147,7 +153,7 @@ export const FavoritesPage = () => {
         setSelected(checked ? filtered.map((item) => item.id) : []);
     };
 
-    /** 批量采集：已在采集车里的跳过 */
+    /** 批量采集：已在采集里的跳过 */
     const addSelectedToCart = () => {
         const keys = new Set(cartItems.map((item) => item.key));
         let added = 0;
@@ -162,8 +168,8 @@ export const FavoritesPage = () => {
         const ignored = selectedFavorites.length - added;
         showCartTip(
             added > 0
-                ? `已加入采集车 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}`
-                : `所选 ${ignored} 个图标均已在采集车中`,
+                ? `已采集 ${added} 个图标${ignored > 0 ? `，忽略 ${ignored} 个已存在` : ""}`
+                : `所选 ${ignored} 个图标均已在采集中`,
         );
     };
 
@@ -188,12 +194,13 @@ export const FavoritesPage = () => {
 
     /** 导出用：收藏项转为图标结构 */
     const exportIcons: IconItem[] = selectedFavorites.map((favorite) => ({
-        id: favorite.id,
+        iconId: favorite.id,
         projectId: "favorites",
         className: favorite.className,
         category: favorite.category,
         svg: favorite.svg,
         tags: favorite.tags,
+        refId: favorite.refId,
         createdBy: favorite.userId,
         createdAt: favorite.createdAt,
         updatedAt: favorite.createdAt,
@@ -239,12 +246,7 @@ export const FavoritesPage = () => {
 
             <div className="content-panel padded">
                 <div className="content-toolbar project-toolbar">
-                    {filtered.length > 0 && (
-                        <label className="ui-row ui-note">
-                            <input type="checkbox" checked={allSelected} onChange={(event) => toggleSelectAll(event.target.checked)} />
-                            全选（{filtered.length}）
-                        </label>
-                    )}
+                    <SelectAllToggle selected={selectedCount} total={filtered.length} onChange={toggleSelectAll} />
                     <div className="ui-search project-toolbar__search">
                         <AppIcon name="search" />
                         <input
@@ -257,7 +259,6 @@ export const FavoritesPage = () => {
                     </div>
                     {selected.length > 0 && (
                         <div className="batch-actions">
-                            <span className="batch-actions__count">已选 {selected.length} 个</span>
                             <span className="tip-anchor">
                                 <button className="ui-btn small" type="button" onClick={addSelectedToCart}>
                                     <AppIcon name="cart" />
@@ -273,9 +274,6 @@ export const FavoritesPage = () => {
                         </div>
                     )}
                     <div className="spacer" />
-                    <span className="ui-note">
-                        {filtered.length} / {favorites.length}
-                    </span>
                     <DropdownMenu
                         items={SORT_ITEMS}
                         value={sortMode}
@@ -290,7 +288,15 @@ export const FavoritesPage = () => {
                     <DisplayControl />
                 </div>
 
-                {favorites.length === 0 ? (
+                {favoritesState.loading && favorites.length === 0 ? (
+                    <LoadingHolder text="正在加载收藏..." />
+                ) : favoritesState.error && favorites.length === 0 ? (
+                    <EmptyState variant="error" text={favoritesState.error.message}>
+                        <button className="ui-btn primary" type="button" onClick={() => setReloadToken((token) => token + 1)}>
+                            重试
+                        </button>
+                    </EmptyState>
+                ) : favorites.length === 0 ? (
                     <EmptyState text="还没有收藏：在公共库或项目图标上点击「收藏」即可">
                         <button className="ui-btn primary" type="button" onClick={() => navigate("/library")}>
                             去公共库看看
@@ -309,6 +315,7 @@ export const FavoritesPage = () => {
                                     selected={selected.includes(favorite.id)}
                                     selectable
                                     showOpenItem={false}
+                                    dragItems={() => dragItemsOf(favorite)}
                                     onToggleSelect={(checked) => toggleSelect(favorite.id, checked)}
                                     onOpen={() => setEditing(favorite)}
                                     onFavorite={() => {
@@ -337,7 +344,9 @@ export const FavoritesPage = () => {
                 open={Boolean(editing)}
                 setOpen={(open) => !open && setEditing(null)}
                 onSaved={() => {
-                    void fetchFavorites();
+                    void fetchFavorites().catch((error: unknown) =>
+                        Toast.showError(error instanceof Error ? error.message : "刷新收藏失败"),
+                    );
                 }}
             />
         </>

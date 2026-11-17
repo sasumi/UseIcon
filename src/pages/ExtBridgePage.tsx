@@ -8,7 +8,7 @@ import { AppIcon } from "@/components/common/AppIcon";
 interface BridgeProject {
     id: string; // 项目 ID
     name: string; // 项目名
-    visibility: string; // 可见性
+    accessType: number; // 访问类型：0 团队 / 1 公开
     canEdit: boolean; // 当前用户是否可编辑
     iconCount: number; // 图标数
 }
@@ -38,7 +38,7 @@ export const ExtBridgePage = () => {
             return projects.map((project, index) => ({
                 id: project.id,
                 name: project.name,
-                visibility: project.visibility,
+                accessType: project.accessType,
                 canEdit: getProjectAccess(project, user).canEdit,
                 iconCount: counts[index],
             }));

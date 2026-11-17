@@ -1,3 +1,4 @@
+import { ACCESS_TYPE_PUBLIC } from "@/config";
 import type { Project, ProjectAccess, ProjectRole, User } from "@/types";
 
 /** 角色名称 */
@@ -40,7 +41,7 @@ export const getProjectAccess = (project: Project | null | undefined, user: User
             canManage: member.role === "admin",
         };
     }
-    const canView = project.visibility === "public" && Boolean(user || project.allowGuest);
+    const canView = project.accessType === ACCESS_TYPE_PUBLIC;
     return {
         role: null,
         isGuest: !user,
@@ -50,7 +51,7 @@ export const getProjectAccess = (project: Project | null | undefined, user: User
     };
 };
 
-/** 是否可以加入项目（仅 members 与 public 可见） */
+/** 是否可以加入项目（仅 members 与公开项目） */
 export const canListProject = (project: Project, user: User | null): boolean => getProjectAccess(project, user).canView;
 
 /** 角色是否可编辑图标 */

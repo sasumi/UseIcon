@@ -1,14 +1,16 @@
 import { Checkbox, DropdownMenu, MenuItemDivider } from "minreact-ui";
 import type { MenuEntry } from "minreact-ui";
+import type { CartItem } from "@/store/cartStore";
 import { useDisplayStore } from "@/store/displayStore";
+import { useIconDragStore } from "@/store/iconDragStore";
 import { useTimedTip } from "@/hooks/useTimedTip";
+import { clearIconDragItems, ICON_DRAG_TYPE, setIconDragItems, setMultiDragImage } from "@/utils/iconDrag";
 import { AppIcon } from "@/components/common/AppIcon";
 import { SvgPreview } from "@/components/common/SvgPreview";
 import { TipBubble } from "@/components/common/TipBubble";
 
 /** 卡片数据（项目图标 / 公共库图标 / 收藏项通用） */
 export interface IconCardData {
-    id: string; // 图标 ID
     className: string; // 图标类名
     tags: string[]; // 标签列表
     svg: string; // SVG 源码
@@ -25,6 +27,7 @@ export const IconCard = ({
     previewBackground,
     draggable,
     code,
+    dragItems,
     selected = false,
     selectable = false,
     canEdit = false,
@@ -49,13 +52,14 @@ export const IconCard = ({
     previewPadding?: number; // 预览内边距（px），默认取全局显示设置
     previewColor?: string; // 预览图标颜色，默认取全局显示设置
     previewBackground?: string; // 预览背景色，默认取全局显示设置
-    draggable?: boolean; // 是否允许拖出代码（默认有 code 时允许）
+    draggable?: boolean; // 是否允许拖拽（默认有 code 或 dragItems 时允许）
     code?: string; // 拖拽 / 复制的代码
+    dragItems?: () => CartItem[]; // 拖拽到采集按钮时携带的条目（多选时返回选中项）
     selected?: boolean; // 是否选中
     selectable?: boolean; // 是否可多选
     canEdit?: boolean; // 是否可编辑（决定删除项）
     favorite?: boolean; // 是否已收藏
-    inCart?: boolean; // 是否已在采集车
+    inCart?: boolean; // 是否已在采集
     deleteLabel?: string; // 删除项文案
     editLabel?: string; // 编辑项文案
     showOpenItem?: boolean; // 菜单是否显示「查看详情」
@@ -63,7 +67,7 @@ export const IconCard = ({
     onOpen?: () => void; // 打开详情
     onCopy?: () => void; // 复制代码
     onCopySvg?: () => void; // 复制 SVG 源码
-    onCart?: () => void; // 加入 / 移出采集车
+    onCart?: () => void; // 加入 / 移出采集
     onFavorite?: () => void; // 收藏 / 取消收藏
     onDownload?: () => void; // 下载 SVG
     onDownloadPng?: () => void; // 下载 PNG
@@ -131,20 +135,45 @@ export const IconCard = ({
         }
     };
 
-    const canDragCode = draggable ?? Boolean(code);
+    const canDragCode = Boolean(code);
+    const canDrag = draggable ?? (canDragCode || Boolean(dragItems));
+    const dragTitle = canDragCode
+        ? dragItems
+            ? `${icon.className}\n拖动可插入代码，拖到采集按钮可加入采集`
+            : `${icon.className}\n拖动可插入代码`
+        : dragItems
+          ? `${icon.className}\n拖动到采集按钮可加入采集`
+          : icon.className;
 
     return (
         <div
             className={`icon-card ${selected ? "selected" : ""}`}
-            draggable={canDragCode}
-            title={code ? `${icon.className}\n拖动可插入代码` : icon.className}
+            draggable={canDrag}
+            title={dragTitle}
             onDragStart={(event) => {
+                const items = dragItems?.() ?? [];
+                if (items.length > 0) {
+                    setIconDragItems(items);
+                    useIconDragStore.getState().setDragging(true);
+                    event.dataTransfer.setData(ICON_DRAG_TYPE, String(items.length));
+                    // 多选拖动时用叠放卡片 + 数量角标作为拖拽影像
+                    if (items.length > 1) {
+                        setMultiDragImage(event.dataTransfer, items.length, icon.svg);
+                    }
+                }
                 if (!canDragCode || !code) {
+                    if (items.length > 0) {
+                        event.dataTransfer.effectAllowed = "copy";
+                    }
                     return;
                 }
                 event.dataTransfer.setData("text/plain", code);
                 event.dataTransfer.setData("text/html", icon.svg);
                 event.dataTransfer.effectAllowed = "copy";
+            }}
+            onDragEnd={() => {
+                clearIconDragItems();
+                useIconDragStore.getState().setDragging(false);
             }}
             onClick={onOpen}
         >
@@ -168,10 +197,10 @@ export const IconCard = ({
                     <button
                         className={`icon-card__quick-btn ${inCart ? "active-cart" : ""}`}
                         type="button"
-                        title={inCart ? "移出采集车" : "加入采集车"}
+                        title={inCart ? "移出采集" : "采集"}
                         onClick={() => {
                             onCart();
-                            showCartTip(inCart ? "已移出采集车" : "已加入采集车");
+                            showCartTip(inCart ? "已移出采集" : "已采集");
                         }}
                     >
                         <AppIcon name="cart" />
