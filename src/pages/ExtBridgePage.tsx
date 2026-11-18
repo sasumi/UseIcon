@@ -3,6 +3,7 @@ import { api } from "@/api";
 import { useAuthStore } from "@/store/authStore";
 import type { IconInput, User } from "@/types";
 import { getProjectAccess } from "@/utils/permission";
+import { broadcastProjectIconsChanged } from "@/utils/projectSync";
 import { AppIcon } from "@/components/common/AppIcon";
 
 interface BridgeProject {
@@ -84,6 +85,8 @@ export const ExtBridgePage = () => {
                         };
                     });
                     const created = await api.icons.createIcons(data.payload.projectId, inputs);
+                    // 其他窗口（主窗口 / 拓展模式）需要同步该项目的最新图标
+                    broadcastProjectIconsChanged(data.payload.projectId);
                     post({
                         type: "uploaded",
                         projectId: data.payload.projectId,

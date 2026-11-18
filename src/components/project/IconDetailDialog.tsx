@@ -161,6 +161,47 @@ export const IconDetailDialog = ({
             <Dialog.Content>
                 <div className="dialog-body">
                     <div className="detail-head">
+                        <div className="detail-meta">
+                            <div className="detail-field">
+                                <label>类名</label>
+                                <InlineTextEditor
+                                    value={className}
+                                    required
+                                    readonly={!canEdit}
+                                    placeholder="例如：icon-home"
+                                    saveHandler={async (value) => {
+                                        const next = value.trim();
+                                        if (next) {
+                                            setClassName(next);
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <div className="detail-field">
+                                <label>标签</label>
+                                <TagEditor value={tags} onChange={setTags} disabled={!canEdit} />
+                            </div>
+
+                            {categories &&
+                                (canEdit ? (
+                                    <div className="detail-field">
+                                        <label>分类</label>
+                                        <div className="detail-select">
+                                            <CategoryInput value={category} onChange={setCategory} options={categories} />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    category && (
+                                        <div className="detail-field">
+                                            <label>分类</label>
+                                            <div>
+                                                <span className="ui-chip">{category}</span>
+                                            </div>
+                                        </div>
+                                    )
+                                ))}
+
+                        </div>
                         <div className="detail-preview">
                             <SvgPreview svg={svg} size={64} />
                             <div className="detail-preview__actions">
@@ -186,119 +227,82 @@ export const IconDetailDialog = ({
                                 )}
                             </div>
                         </div>
-                        <div className="detail-meta">
-                            <div className="detail-field">
-                                <InlineTextEditor
-                                    value={className}
-                                    required
-                                    readonly={!canEdit}
-                                    placeholder="类名（css）"
-                                    saveHandler={async (value) => {
-                                        const next = value.trim();
-                                        if (next) {
-                                            setClassName(next);
-                                        }
-                                    }}
-                                />
-                            </div>
-                            <div className="detail-field">
-                                <TagEditor value={tags} onChange={setTags} disabled={!canEdit} />
-                            </div>
-
-                            {categories &&
-                                (canEdit ? (
-                                    <div className="detail-field">
-                                        <label>分类</label>
-                                        <CategoryInput value={category} onChange={setCategory} options={categories} />
-                                    </div>
-                                ) : (
-                                    category && (
-                                        <div className="detail-field">
-                                            <label>分类</label>
-                                            <div>
-                                                <span className="ui-chip">{category}</span>
-                                            </div>
-                                        </div>
-                                    )
-                                ))}
-
-                            {canEdit && (
-                                <div className="detail-appearance">
-                                    {paint.stroked && (
-                                        <div className="detail-appearance__row">
-                                            <label>线条粗细</label>
-                                            <input
-                                                className="display-range"
-                                                type="range"
-                                                min={0.5}
-                                                max={4}
-                                                step={0.25}
-                                                value={strokeWidth || originalStroke || 1.75}
-                                                onChange={(event) => setStrokeWidth(event.target.value)}
-                                            />
-                                            <span className="detail-appearance__value">
-                                                {strokeWidth ? `${strokeWidth}（调整后）` : `原始${originalStroke ? ` ${originalStroke}` : ""}`}
-                                            </span>
-                                            {strokeWidth && (
-                                                <button className="ui-btn button-small button-tonal" type="button" onClick={() => setStrokeWidth("")}>
-                                                    复位
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
+                        {canEdit && (
+                            <div className="detail-appearance">
+                                {paint.stroked && (
                                     <div className="detail-appearance__row">
-                                        <label>图标颜色</label>
-                                        <ColorPicker
-                                            value={color}
-                                            fallback="#1f1f1f"
-                                            title={color || "默认跟随文字色"}
-                                            onChange={setColor}
+                                        <label>线条粗细</label>
+                                        <input
+                                            className="display-range"
+                                            type="range"
+                                            min={0.5}
+                                            max={4}
+                                            step={0.25}
+                                            value={strokeWidth || originalStroke || 1.75}
+                                            onChange={(event) => setStrokeWidth(event.target.value)}
                                         />
-                                        <span className="detail-appearance__value">{color || "currentColor"}</span>
-                                        {color && (
-                                            <button className="ui-btn button-small button-tonal" type="button" onClick={() => setColor("")}>
+                                        <span className="detail-appearance__value">
+                                            {strokeWidth ? `${strokeWidth}（调整后）` : `原始${originalStroke ? ` ${originalStroke}` : ""}`}
+                                        </span>
+                                        {strokeWidth && (
+                                            <button className="ui-btn button-small button-tonal" type="button" onClick={() => setStrokeWidth("")}>
+                                                复位
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                                <div className="detail-appearance__row">
+                                    <label>图标颜色</label>
+                                    <ColorPicker
+                                        value={color}
+                                        fallback="#1f1f1f"
+                                        title={color || "默认跟随文字色"}
+                                        onChange={setColor}
+                                    />
+                                    <span className="detail-appearance__value">{color || "currentColor"}</span>
+                                    {color && (
+                                        <button className="ui-btn button-small button-tonal" type="button" onClick={() => setColor("")}>
+                                            默认
+                                        </button>
+                                    )}
+                                </div>
+                                {paint.filled && (
+                                    <div className="detail-appearance__row">
+                                        <label>填充颜色</label>
+                                        <ColorPicker
+                                            value={fillColor}
+                                            fallback="#1f1f1f"
+                                            title={fillColor || "默认跟随文字色"}
+                                            onChange={setFillColor}
+                                        />
+                                        <span className="detail-appearance__value">{fillColor || "currentColor"}</span>
+                                        {fillColor && (
+                                            <button className="ui-btn button-small button-tonal" type="button" onClick={() => setFillColor("")}>
                                                 默认
                                             </button>
                                         )}
                                     </div>
-                                    {paint.filled && (
-                                        <div className="detail-appearance__row">
-                                            <label>填充颜色</label>
-                                            <ColorPicker
-                                                value={fillColor}
-                                                fallback="#1f1f1f"
-                                                title={fillColor || "默认跟随文字色"}
-                                                onChange={setFillColor}
-                                            />
-                                            <span className="detail-appearance__value">{fillColor || "currentColor"}</span>
-                                            {fillColor && (
-                                                <button className="ui-btn button-small button-tonal" type="button" onClick={() => setFillColor("")}>
-                                                    默认
-                                                </button>
-                                            )}
-                                        </div>
+                                )}
+                                <div className="detail-appearance__row">
+                                    <label>图标占比</label>
+                                    <input
+                                        className="display-range"
+                                        type="range"
+                                        min={50}
+                                        max={100}
+                                        step={5}
+                                        value={scale}
+                                        onChange={(event) => setScale(Number(event.target.value))}
+                                    />
+                                    <span className="detail-appearance__value">{scale}%</span>
+                                    {scale !== 100 && (
+                                        <button className="ui-btn button-small button-tonal" type="button" onClick={() => setScale(100)}>
+                                            100%
+                                        </button>
                                     )}
-                                    <div className="detail-appearance__row">
-                                        <label>图标占比</label>
-                                        <input
-                                            className="display-range"
-                                            type="range"
-                                            min={50}
-                                            max={100}
-                                            step={5}
-                                            value={scale}
-                                            onChange={(event) => setScale(Number(event.target.value))}
-                                        />
-                                        <span className="detail-appearance__value">{scale}%</span>
-                                        {scale !== 100 && (
-                                            <button className="ui-btn button-small button-tonal" type="button" onClick={() => setScale(100)}>
-                                                100%
-                                            </button>
-                                        )}
-                                    </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="detail-code">

@@ -130,6 +130,11 @@ export const CartDrawer = () => {
             clear();
             setOpen(false);
             void loadProjects();
+            // 侧栏数量随加入的图标同步；当前打开的正是目标项目时再刷新主区图标列表
+            useProjectStore.getState().addIconCount(project.id, created.length);
+            if (useProjectStore.getState().current?.id === project.id) {
+                void useProjectStore.getState().refreshCurrent();
+            }
         } catch (error) {
             Toast.showError(error instanceof Error ? error.message : "加入项目失败");
         } finally {

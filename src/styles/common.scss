@@ -1,4 +1,4 @@
-@use './mixins' as *;
+@use "./mixins" as *;
 
 // ---------- 按钮 ----------
 // 基底与变体对齐 pathbooker：form-button / button-primary / button-tonal / button-small / button-causel
@@ -6,9 +6,9 @@
     @include button-base;
 
     &.primary,
-    &[data-variant='primary'],
-    &[data-variant='confirm'],
-    &[data-variant='ok'],
+    &[data-variant="primary"],
+    &[data-variant="confirm"],
+    &[data-variant="ok"],
     &.button-primary {
         @include button-primary;
     }
@@ -75,7 +75,7 @@
         transition: transform 0.2s linear;
     }
 
-    &[aria-expanded='true']::after {
+    &[aria-expanded="true"]::after {
         transform: rotate(180deg);
     }
 
@@ -95,7 +95,7 @@
         transition: transform 0.2s linear;
     }
 
-    &[aria-expanded='true']::after {
+    &[aria-expanded="true"]::after {
         transform: rotate(180deg);
     }
 }
@@ -394,7 +394,7 @@
     font-size: var(--font-small);
 }
 
-input[type='checkbox'] {
+input[type="checkbox"] {
     accent-color: var(--color-accent);
     width: 1em;
     height: 1em;
@@ -542,9 +542,9 @@ input[type='checkbox'] {
 }
 
 .ui-divider {
-    height: 1px;
+    width: 1px;
+    height: 1em;
     background: var(--color-border);
-    margin: 0.4em 0;
 }
 
 // ---------- 头像 ----------
@@ -666,7 +666,7 @@ input[type='checkbox'] {
     cursor: pointer;
 
     &:hover,
-    &[data-state='open'] {
+    &[data-state="open"] {
         border-color: var(--color-accent);
     }
 
@@ -752,12 +752,12 @@ input[type='checkbox'] {
         user-select: none;
 
         &:hover,
-        &[data-state='open'] {
+        &[data-state="open"] {
             border-color: var(--color-accent);
         }
 
         &::after {
-            content: '';
+            content: "";
             width: 0;
             height: 0;
             border-left: 3px solid transparent;
@@ -790,7 +790,7 @@ input[type='checkbox'] {
         background: var(--color-background);
 
         &::after {
-            content: '';
+            content: "";
             position: absolute;
             inset: 2px;
             background: linear-gradient(to top right, transparent 44%, var(--color-danger) 44%, var(--color-danger) 56%, transparent 56%);

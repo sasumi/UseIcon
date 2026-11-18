@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DropdownMenu, EmptyHolder, LoadingHolder, Select, Toast } from "minreact-ui";
-import type { MenuEntry } from "minreact-ui";
+import type { MenuEntry, MenuItemData } from "minreact-ui";
 import { api } from "@/api";
 import { ACCESS_TYPE_PUBLIC, DEFAULT_ICON_SIZE, PROJECT_SORT_STORAGE_PREFIX } from "@/config";
 import { COMMON_CATEGORIES } from "@/data/library";
@@ -39,6 +39,7 @@ import { ProjectBasicsDialog } from "@/components/project/ProjectBasicsDialog";
 import { ProjectMembersDialog } from "@/components/project/ProjectMembersDialog";
 import { ProjectTemplateDialog } from "@/components/project/ProjectTemplateDialog";
 import { UploadDialog } from "@/components/project/UploadDialog";
+import { Divider } from "@/components/common/Divider";
 
 type SortMode = "default" | "name-asc" | "name-desc" | "smart" | "custom";
 
@@ -50,7 +51,7 @@ const SETTINGS_ITEMS: MenuEntry[] = [
     { value: "template", label: "代码模板", icon: <AppIcon name="code" /> },
 ];
 
-const SORT_ITEMS: MenuEntry[] = [
+const SORT_ITEMS: MenuItemData[] = [
     { value: "default", label: "默认", icon: <AppIcon name="sort" /> },
     { value: "name-asc", label: "名称 A → Z", icon: <AppIcon name="arrow-down" /> },
     { value: "name-desc", label: "名称 Z → A", icon: <AppIcon name="arrow-up" /> },
@@ -86,7 +87,8 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     const error = useProjectStore((state) => state.detailError);
     const loadProject = useProjectStore((state) => state.loadProject);
     const refreshCurrent = useProjectStore((state) => state.refreshCurrent);
-    const setCurrent = useProjectStore((state) => state.setCurrent);
+    const upsertProject = useProjectStore((state) => state.upsertProject);
+    const removeProject = useProjectStore((state) => state.removeProject);
     const updateIcons = useProjectStore((state) => state.updateIcons);
     const removeIcons = useProjectStore((state) => state.removeIcons);
 
@@ -465,7 +467,6 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     return (
         <>
             {sidebar}
-
             <div className="content-panel padded with-icon-scroll">
                 <div className="project-header">
                     <div className="project-header__main">
@@ -556,6 +557,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                             </button>
                         }
                     />
+                    <Divider />
                     <Select
                         key={`${project.id}:category`}
                         items={[
@@ -567,6 +569,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                         onChange={(value) => setCategory(typeof value === "string" ? value : "")}
                         triggerClassName={`ui-btn small button-tonal project-toolbar__category ${category ? "has-value" : ""}`}
                     />
+                    <Divider />
                     <Select
                         key={`${project.id}:${tag}`}
                         items={[
@@ -578,6 +581,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                         onChange={(value) => setTag(typeof value === "string" ? value : "")}
                         triggerClassName={`ui-btn small button-tonal project-toolbar__tag ${tag ? "has-value" : ""}`}
                     />
+                    <Divider />
                     <DisplayControl />
                 </div>
                 {icons.length === 0 ? (
@@ -726,9 +730,9 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 open={settingsDialog === "basics"}
                 setOpen={(open) => setSettingsDialog(open ? "basics" : null)}
                 project={project}
-                onUpdated={(updated) => setCurrent(updated)}
+                onUpdated={(updated) => upsertProject(updated)}
                 onDeleted={() => {
-                    void useProjectStore.getState().loadProjects();
+                    removeProject(project.id);
                     navigate("/projects");
                 }}
             />
@@ -736,13 +740,13 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 open={settingsDialog === "members"}
                 setOpen={(open) => setSettingsDialog(open ? "members" : null)}
                 project={project}
-                onUpdated={(updated) => setCurrent(updated)}
+                onUpdated={(updated) => upsertProject(updated)}
             />
             <ProjectTemplateDialog
                 open={settingsDialog === "template"}
                 setOpen={(open) => setSettingsDialog(open ? "template" : null)}
                 project={project}
-                onUpdated={(updated) => setCurrent(updated)}
+                onUpdated={(updated) => upsertProject(updated)}
             />
             <IconDetailDialog
                 open={Boolean(detail)}
@@ -776,8 +780,9 @@ const ProjectList = ({ activeId, onCreate }: { activeId: string; onCreate: () =>
     const loadProjects = useProjectStore((state) => state.loadProjects);
     const loadProjectPage = useProjectStore((state) => state.loadProjectPage);
     const loadMoreProjects = useProjectStore((state) => state.loadMoreProjects);
+    const iconCounts = useProjectStore((state) => state.iconCounts);
+    const loadIconCounts = useProjectStore((state) => state.loadIconCounts);
     const [keyword, setKeyword] = useState("");
-    const [counts, setCounts] = useState<Record<string, number>>({});
     const sentinelRef = useRef<HTMLDivElement | null>(null);
 
     // 列表只加载一次：直接打开项目详情（如从 ExtMode 返回）时补一次，空列表也不会反复请求
@@ -815,33 +820,10 @@ const ProjectList = ({ activeId, onCreate }: { activeId: string; onCreate: () =>
         };
     }, [loadMoreProjects, projectHasMore, projects.length]);
 
+    // 侧栏数量随项目列表一起拉取；增删图标由 store 内的 iconCounts 联动更新
     useEffect(() => {
-        if (projects.length === 0) {
-            setCounts({});
-            return;
-        }
-        let alive = true;
-        void Promise.all(
-            projects.map((item) =>
-                api.icons
-                    .listIcons(item.id)
-                    .then((list) => list.length)
-                    .catch(() => 0),
-            ),
-        ).then((lists) => {
-            if (!alive) {
-                return;
-            }
-            const map: Record<string, number> = {};
-            projects.forEach((item, index) => {
-                map[item.id] = lists[index];
-            });
-            setCounts(map);
-        });
-        return () => {
-            alive = false;
-        };
-    }, [projects]);
+        void loadIconCounts(projects.map((item) => item.id));
+    }, [projects, loadIconCounts]);
 
     const filtered = useMemo(() => {
         const query = keyword.trim().toLowerCase();
@@ -877,7 +859,7 @@ const ProjectList = ({ activeId, onCreate }: { activeId: string; onCreate: () =>
                         >
                             {item.accessType === ACCESS_TYPE_PUBLIC ? <AppIcon name="folder" /> : <AppIcon name="lock" />}
                             <span className="ellipsis">{item.name}</span>
-                            <span className="nav-item__count">{counts[item.id] ?? 0}</span>
+                            <span className="nav-item__count">{iconCounts[item.id] ?? 0}</span>
                         </div>
                     ))}
                 </div>

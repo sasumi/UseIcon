@@ -563,11 +563,7 @@ body.is-drag-selecting {
 .detail-appearance {
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
-    padding: 0.6rem 0.7rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--element-radius);
-    background: var(--color-background-secondary);
+    gap: 0.55rem;
 
     &__row {
         display: flex;
@@ -576,12 +572,14 @@ body.is-drag-selecting {
 
         > label {
             flex: 0 0 5em;
+            color: var(--color-secondary);
             font-size: var(--font-small);
         }
 
         .display-range {
             flex: 1;
             min-width: 0;
+            max-width: 10em;
         }
 
         .ui-note {
@@ -678,10 +676,14 @@ body.is-drag-selecting {
 
 // ---------- 图标详情 ----------
 .detail-head {
-    display: flex;
-    gap: 0.85rem;
-    align-items: flex-start;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 0.55rem 0.85rem;
+
+    .detail-appearance {
+        grid-column: 1 / -1;
+    }
 }
 
 .detail-preview {
@@ -691,7 +693,7 @@ body.is-drag-selecting {
     justify-content: center;
     width: 6rem;
     height: 6rem;
-    flex: none;
+    grid-area: 1 / 2;
     border-radius: var(--panel-radius);
     border: 1px solid var(--color-border);
     @include checkerboard(12px, 6px);
@@ -709,22 +711,60 @@ body.is-drag-selecting {
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
-    flex: 1 1 16rem;
+    grid-area: 1 / 1;
     min-width: 0;
 }
 
 .detail-field {
     display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
+    align-items: center;
+    gap: 0.6rem;
 
     > label {
+        flex: 0 0 5em;
         color: var(--color-secondary);
         font-size: var(--font-small);
     }
 
+    > :not(label) {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
     .minreactui-inline-text-editor {
         font-size: 0.85rem;
+    }
+}
+
+// 分类：输入框 + 右侧箭头，表现与 select-like 下拉一致
+.detail-select {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+
+    &::after {
+        @include caret-down;
+        position: absolute;
+        top: 50%;
+        right: 0.65em;
+        transform: translateY(-50%);
+        pointer-events: none;
+    }
+
+    &:has(> .ui-input[aria-expanded='true'])::after {
+        transform: translateY(-50%) rotate(180deg);
+    }
+
+    > .ui-input {
+        width: 100%;
+        padding-right: 1.8em;
+        cursor: pointer;
+    }
+
+    &:hover > .ui-input,
+    > .ui-input:focus {
+        border-color: var(--color-link);
     }
 }
 

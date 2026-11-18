@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DropdownMenu, LoadingHolder, MenuItemDivider, Select, Toast } from "minreact-ui";
-import type { MenuEntry } from "minreact-ui";
+import type { MenuEntry, MenuItemData } from "minreact-ui";
 import { CODE_TEMPLATE_PRESETS, DEFAULT_CODE_TEMPLATE, DEFAULT_ICON_SIZE, EXTMODE_CODE_HEIGHT_KEY, PROJECT_SORT_STORAGE_PREFIX } from "@/config";
 import { navigate, extModePath, projectPath } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
@@ -37,7 +37,7 @@ const CODE_PANEL_HEIGHT = {
 
 type SortMode = "default" | "name-asc" | "name-desc" | "smart" | "custom";
 
-const SORT_ITEMS: MenuEntry[] = [
+const SORT_ITEMS: MenuItemData[] = [
     { value: "default", label: "默认", icon: <AppIcon name="layers" /> },
     { value: "name-asc", label: "名称 A → Z", icon: <AppIcon name="arrow-down" /> },
     { value: "name-desc", label: "名称 Z → A", icon: <AppIcon name="arrow-up" /> },

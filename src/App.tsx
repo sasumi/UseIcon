@@ -11,6 +11,7 @@ import { navigate, useRoute } from "@/router/useRoute";
 import { useAuthStore } from "@/store/authStore";
 import { openLoginDialog } from "@/store/loginDialogStore";
 import { useProjectStore } from "@/store/projectStore";
+import { subscribeProjectIconsChanged } from "@/utils/projectSync";
 import { EmptyState } from "@/components/common/EmptyState";
 import { LoadingHolder } from "minreact-ui";
 
@@ -31,6 +32,22 @@ const App = () => {
     useEffect(() => {
         useProjectStore.getState().reset();
     }, [accountId]);
+
+    // 跨窗口联动：拓展模式窗口 / 浏览器扩展桥接里增删图标后，当前窗口同步
+    useEffect(
+        () =>
+            subscribeProjectIconsChanged((projectId) => {
+                const store = useProjectStore.getState();
+                if (store.current?.id === projectId) {
+                    void store.refreshCurrent().catch(() => undefined);
+                    return;
+                }
+                if (store.projects.some((item) => item.id === projectId)) {
+                    void store.refreshIconCount(projectId).catch(() => undefined);
+                }
+            }),
+        [],
+    );
 
     // 需要登录的页面在游客访问时弹出登录对话框，不再整页跳转
     const needAuth = !user && route.name === "favorites";

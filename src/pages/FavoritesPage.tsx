@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DIALOG_SIZE_SMALL, Dialog, DropdownMenu, LoadingHolder, Toast, useAsync } from "minreact-ui";
-import type { MenuEntry } from "minreact-ui";
+import type { MenuItemData } from "minreact-ui";
 import type { FavoriteIcon, IconItem } from "@/types";
 import { DEFAULT_ICON_SIZE, FAVORITES_SORT_STORAGE_KEY } from "@/config";
 import { useClearOnBlankClick } from "@/hooks/useClearOnBlankClick";
@@ -29,7 +29,7 @@ import { DisplayControl } from "@/components/library/DisplayPanel";
 
 type FavoritesSortMode = "default" | "name-asc" | "name-desc" | "smart";
 
-const SORT_ITEMS: MenuEntry[] = [
+const SORT_ITEMS: MenuItemData[] = [
     { value: "default", label: "默认", icon: <AppIcon name="sort" /> },
     { value: "name-asc", label: "名称 A → Z", icon: <AppIcon name="arrow-down" /> },
     { value: "name-desc", label: "名称 Z → A", icon: <AppIcon name="arrow-up" /> },
@@ -410,7 +410,7 @@ const FavoriteEditDialog = ({
                         </div>
                         <div className="ui-form">
                             <div className="ui-field">
-                                <label>className</label>
+                                <label>类名</label>
                                 <input className="ui-input" value={className} onChange={(event) => setClassName(event.target.value)} />
                             </div>
                             <div className="ui-field">
