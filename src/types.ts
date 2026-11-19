@@ -126,6 +126,14 @@ export interface IconOptimizeOptions {
     opticalCenter?: boolean; // 其它调整完成后自动优化视觉中心
 }
 
+/** 图标批量重命名参数：先查找替换，再套上前缀 / 后缀 */
+export interface IconRenameOptions {
+    prefix?: string; // 加在类名前的文字
+    suffix?: string; // 加在类名后的文字
+    find?: string; // 查找文字，留空表示不替换
+    replace?: string; // 替换为（留空表示删除查找到的文字）
+}
+
 /** 批量优化预览所需的图标数据 */
 export interface OptimizeIconSource {
     iconId: string; // 图标 ID

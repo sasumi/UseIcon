@@ -5,7 +5,6 @@ import { api } from "@/api";
 import { ACCESS_TYPE_PUBLIC, DEFAULT_ICON_SIZE, PROJECT_SORT_STORAGE_PREFIX } from "@/config";
 import { COMMON_CATEGORIES } from "@/data/library";
 import { useClearOnBlankClick } from "@/hooks/useClearOnBlankClick";
-import { useDragSelect } from "@/hooks/useDragSelect";
 import { useIconPhashes } from "@/hooks/useIconPhashes";
 import { useTimedTip } from "@/hooks/useTimedTip";
 import { extModePath, navigate, projectPath } from "@/router/useRoute";
@@ -28,7 +27,6 @@ import { SelectAllToggle } from "@/components/common/SelectAllToggle";
 import { SidePanel } from "@/components/common/SidePanel";
 import { TipBubble } from "@/components/common/TipBubble";
 import { BatchOptimizeDialog } from "@/components/project/BatchOptimizeDialog";
-import { BatchRenameDialog } from "@/components/project/BatchRenameDialog";
 import { ExportMenu } from "@/components/project/ExportMenu";
 import { IconCard } from "@/components/project/IconCard";
 import { DisplayControl } from "@/components/library/DisplayPanel";
@@ -78,7 +76,7 @@ const readSortMode = (projectId: string): SortMode => {
     }
 };
 
-/** 项目工作区：侧栏项目列表 + 主区图标管理（未指定项目时默认打开第一个；支持框选与批量采集 / 收藏） */
+/** 项目工作区：侧栏项目列表 + 主区图标管理（未指定项目时默认打开第一个；支持批量采集 / 收藏） */
 export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     const user = useAuthStore((state) => state.user);
     const projects = useProjectStore((state) => state.projects);
@@ -98,13 +96,11 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     const [tag, setTag] = useState("");
     const [category, setCategory] = useState("");
     const [selected, setSelected] = useState<string[]>([]);
-    const gridRef = useRef<HTMLUListElement | null>(null);
     const [createOpen, setCreateOpen] = useState(false);
     const [uploadOpen, setUploadOpen] = useState(false);
     const [pickOpen, setPickOpen] = useState(false);
     const [settingsDialog, setSettingsDialog] = useState<SettingsDialogKey>(null);
     const [optimizeOpen, setOptimizeOpen] = useState(false);
-    const [renameOpen, setRenameOpen] = useState(false);
     const [detail, setDetail] = useState<IconItem | null>(null);
     const [sortMode, setSortMode] = useState<SortMode>("default");
     const [dragIconId, setDragIconId] = useState<string | null>(null);
@@ -188,11 +184,6 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
 
     const selectedIcons = useMemo(() => icons.filter((icon) => selected.includes(icon.iconId)), [icons, selected]);
     const canSort = sortMode === "custom" && access.canEdit;
-    const dragBox = useDragSelect({
-        containerRef: gridRef,
-        enabled: access.canEdit && filtered.length > 0,
-        onSelect: (ids, additive) => setSelected((prev) => (additive ? Array.from(new Set([...prev, ...ids])) : ids)),
-    });
     useClearOnBlankClick(() => setSelected((prev) => (prev.length === 0 ? prev : [])));
     const template = project?.codeTemplate || "";
     const iconSize = DEFAULT_ICON_SIZE;
@@ -528,11 +519,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                             </button>
                             <button className="ui-btn small" type="button" onClick={() => setOptimizeOpen(true)}>
                                 <AppIcon name="settings" />
-                                优化
-                            </button>
-                            <button className="ui-btn small" type="button" onClick={() => setRenameOpen(true)}>
-                                <AppIcon name="edit" />
-                                重命名
+                                批量修改
                             </button>
                             <ExportMenu icons={selectedIcons} projectName={project.name} size={iconSize} label="导出" />
                             <button className="ui-btn small danger" type="button" onClick={removeSelected}>
@@ -604,11 +591,10 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                     <EmptyState text="没有匹配当前筛选条件的图标" />
                 ) : (
                     <div className="icon-scroll">
-                        <ul ref={gridRef} className={`icon-grid ${sortMode === "custom" ? "is-sortable" : ""}`}>
+                        <ul className={`icon-grid ${sortMode === "custom" ? "is-sortable" : ""}`}>
                             {filtered.map((icon) => (
                                 <li
                                     key={icon.iconId}
-                                    data-select-id={icon.iconId}
                                     className={[
                                         dragIconId === icon.iconId ? "dragging" : "",
                                         dropTarget?.id === icon.iconId ? `drop-${dropTarget.position}` : "",
@@ -705,7 +691,6 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                         </ul>
                     </div>
                 )}
-                {dragBox && <div className="drag-select-box" style={{ left: dragBox.left, top: dragBox.top, width: dragBox.width, height: dragBox.height }} />}
             </div>
 
             <UploadDialog open={uploadOpen} setOpen={setUploadOpen} projectId={project.id} onImported={afterChange} />
@@ -715,15 +700,6 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 setOpen={setOptimizeOpen}
                 icons={selectedIcons}
                 defaultSize={iconSize}
-                onDone={(updated) => {
-                    updateIcons(updated);
-                    setSelected([]);
-                }}
-            />
-            <BatchRenameDialog
-                open={renameOpen}
-                setOpen={setRenameOpen}
-                iconIds={selected}
                 onDone={(updated) => {
                     updateIcons(updated);
                     setSelected([]);

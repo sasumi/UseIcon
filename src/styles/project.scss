@@ -212,21 +212,6 @@
     }
 }
 
-// 框选矩形（拖动选择图标）
-.drag-select-box {
-    position: fixed;
-    z-index: 20;
-    border: 1px solid var(--color-accent);
-    border-radius: 3px;
-    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-    pointer-events: none;
-}
-
-body.is-drag-selecting {
-    cursor: crosshair;
-    user-select: none;
-}
-
 .icon-card {
     position: relative;
     display: flex;
@@ -866,6 +851,8 @@ body.is-drag-selecting {
     }
 }
 
+
+
 .optimize-dialog .ui-form-item__check {
     display: flex;
     align-items: center;
@@ -878,6 +865,38 @@ body.is-drag-selecting {
     }
 }
 
+// 优化对话框内的重命名参数（窄栏竖排）
+.optimize-rename {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45em;
+    padding: 0.45em 0.4em;
+
+    &__toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.35em;
+        color: var(--color-secondary);
+        font-size: var(--font-small);
+        cursor: pointer;
+
+        input[type='checkbox'] {
+            flex: none;
+            margin: 0;
+        }
+    }
+
+    &__replace {
+        display: flex;
+        gap: 0.4em;
+    }
+
+    .ui-note {
+        margin: 0;
+        font-size: 0.72rem;
+    }
+}
+
 .optimize-preview {
     position: relative;
     display: flex;
@@ -886,28 +905,70 @@ body.is-drag-selecting {
     min-width: 0;
     min-height: 0;
 
+    &__scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+        @include scrollbar(8px);
+    }
+
+    &__grid {
+        min-width: 100%;
+    }
+
     &__head {
-        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 30px repeat(2, minmax(0, 1fr));
         align-items: center;
-        gap: 0.5em;
-        flex: none;
-        padding: 0 0.35em 0.35em;
+        gap: 7px;
+        padding: 4px 5px 6px;
+        background: var(--color-background);
         border-bottom: 1px solid var(--color-border);
         color: var(--color-secondary);
         font-size: 0.78rem;
         font-weight: 600;
 
         > span {
-            flex: 1 1 0;
             min-width: 0;
         }
     }
 
+    // 放大入口浮在右上角，不占用与列表对齐的列
     &__zoom {
+        position: absolute;
+        top: 0;
+        right: 0;
+        z-index: 2;
         display: flex;
-        flex: none;
         align-items: center;
         gap: 0.35em;
+        padding: 2px 0 2px 8px;
+        background: var(--color-background);
+    }
+
+    &__check-all {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 400;
+    }
+
+    &__check {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        cursor: pointer;
+
+        input[type='checkbox'] {
+            accent-color: var(--color-accent);
+            width: 1em;
+            height: 1em;
+            margin: 0;
+        }
     }
 
     &__zoom-label {
@@ -957,22 +1018,19 @@ body.is-drag-selecting {
 
     &__list {
         display: flex;
-        flex: 1 1 auto;
         flex-direction: column;
         gap: 0.15em;
-        min-height: 0;
         margin: 0;
-        padding: 0.3em 0;
-        overflow: auto;
+        padding: 0 0 4px;
         list-style: none;
-        @include scrollbar(8px);
     }
 
     &__row {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.5em;
-        padding: 0.25em 0.35em;
+        grid-template-columns: 30px repeat(2, minmax(0, 1fr));
+        align-items: center;
+        gap: 7px;
+        padding: 4px 5px;
         border-radius: var(--element-radius);
 
         &:nth-child(even) {
@@ -992,6 +1050,10 @@ body.is-drag-selecting {
 
         &.is-error .optimize-preview__tags {
             color: var(--color-danger);
+        }
+
+        &.is-excluded {
+            opacity: 0.4;
         }
     }
 
@@ -1025,6 +1087,10 @@ body.is-drag-selecting {
         font-family: var(--font-code);
         font-size: 0.72rem;
         @include ellipsis;
+
+        &.is-renamed {
+            color: var(--color-accent);
+        }
     }
 
     &__tags {

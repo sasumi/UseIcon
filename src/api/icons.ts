@@ -1,4 +1,4 @@
-import type { IconInput, IconItem, IconOptimizeOptions, BatchCreateOptions } from "@/types";
+import type { IconInput, IconItem, IconOptimizeOptions, IconRenameOptions, BatchCreateOptions } from "@/types";
 import { computeIconPhash, computeIconPhashes } from "@/utils/iconMatcher";
 import { centerSvgOptically } from "@/utils/opticalCenter";
 import { normalizeSvg, optimizeSvg, sanitizeIconName } from "@/utils/svg";
@@ -144,7 +144,7 @@ export const optimizeIcons = async (iconIds: string[], options: IconOptimizeOpti
 /** 批量重命名（前缀 / 后缀 / 查找替换，重名由后台自动加序号） */
 export const renameIcons = (
     iconIds: string[],
-    options: { prefix?: string; suffix?: string; find?: string; replace?: string },
+    options: IconRenameOptions,
 ): Promise<IconItem[]> => {
     if (iconIds.length === 0) {
         return Promise.reject(new ApiError("请先选择图标"));

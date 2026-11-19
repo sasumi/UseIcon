@@ -5,10 +5,12 @@ export const SelectAllToggle = ({
     selected,
     total,
     onChange,
+    hideText,
 }: {
     selected: number; // 当前列表已选数量
     total: number; // 当前列表条目总数
     onChange: (checked: boolean) => void; // 全选 / 取消全选
+    hideText?: boolean; // 只显示勾选框（文字由外部展示）
 }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const checked = total > 0 && selected >= total;
@@ -24,10 +26,18 @@ export const SelectAllToggle = ({
         return null;
     }
 
+    const text = selected > 0 ? `已选择 ${selected}/${total}` : `全选(${total})`;
+
     return (
         <label className="ui-label-check ui-note">
-            <input ref={inputRef} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-            {selected > 0 ? `已选择 ${selected}/${total}` : `全选(${total})`}
+            <input
+                ref={inputRef}
+                type="checkbox"
+                checked={checked}
+                aria-label={text}
+                onChange={(event) => onChange(event.target.checked)}
+            />
+            {hideText ? null : text}
         </label>
     );
 };

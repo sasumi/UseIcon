@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 import { DIALOG_SIZE_LARGE, Dialog, RangeInput, Select, Toast } from "minreact-ui";
 import { api } from "@/api";
 import { useDialogForm } from "@/hooks/useDialogForm";
-import type { IconOptimizeOptions, IconPatch, OptimizeIconSource } from "@/types";
+import type { IconOptimizeOptions, IconPatch, IconRenameOptions, OptimizeIconSource } from "@/types";
 import { centerSvgOptically } from "@/utils/opticalCenter";
 import { optimizeSvg, readSvgCanvasSize } from "@/utils/svg";
+import { SelectAllToggle } from "@/components/common/SelectAllToggle";
 import { SvgPreview } from "@/components/common/SvgPreview";
 
 const SIZE_MIN = 12;
@@ -24,6 +25,9 @@ const ZOOM_LEVELS = [1, 2, 4, 8, 10];
 
 /** 单元格里类名 / 标签预留的宽度（px） */
 const PREVIEW_META_WIDTH = 120;
+
+/** 行内「更改」勾选列宽度（px） */
+const PREVIEW_CHECK_WIDTH = 34;
 
 /** 每次生成预览的图标数量：分片处理，避免大列表阻塞界面 */
 const PREVIEW_CHUNK = 8;
@@ -72,19 +76,26 @@ const PreviewCell = ({
     svg,
     status,
     canvas,
+    excluded,
+    name,
 }: {
     icon: OptimizeIconSource; // 图标信息
     svg?: string; // 待展示的 SVG，缺省表示尚未生成
     status?: "pending" | "error"; // 预览状态
     canvas: number; // SVG 画布显示边长（px）
+    excluded?: boolean; // 该图标本次不应用更改
+    name?: string; // 更改后的类名，缺省显示原类名
 }) => (
-    <div className={`optimize-preview__cell${status ? ` is-${status}` : ""}`}>
+    <div className={`optimize-preview__cell${status ? ` is-${status}` : ""}${excluded ? " is-excluded" : ""}`}>
         <span className="optimize-preview__thumb" style={{ width: canvas, height: canvas }}>
             {svg ? <SvgPreview svg={svg} size={canvas} /> : null}
         </span>
         <div className="optimize-preview__meta">
-            <span className="optimize-preview__name" title={icon.className}>
-                {icon.className}
+            <span
+                className={`optimize-preview__name${name && name !== icon.className ? " is-renamed" : ""}`}
+                title={name ?? icon.className}
+            >
+                {name ?? icon.className}
             </span>
             <span className="optimize-preview__tags" title={icon.tags.join(" / ")}>
                 {status === "pending" ? "生成中…" : status === "error" ? "优化失败" : icon.tags.join(" / ") || "-"}
@@ -93,7 +104,7 @@ const PreviewCell = ({
     </div>
 );
 
-/** 批量优化图标（项目图标与公共库图标共用）：左侧调整参数，右侧对比优化前后 */
+/** 批量优化图标（项目图标与公共库图标共用）：左侧调整优化与重命名参数，右侧对比修改前后 */
 export const BatchOptimizeDialog = ({
     open,
     setOpen,
@@ -101,6 +112,7 @@ export const BatchOptimizeDialog = ({
     defaultSize,
     onDone,
     optimize = api.icons.optimizeIcons,
+    rename = api.icons.renameIcons,
 }: {
     open: boolean; // 是否打开
     setOpen: (open: boolean) => void; // 显隐控制
@@ -108,6 +120,7 @@ export const BatchOptimizeDialog = ({
     defaultSize: number; // 默认尺寸
     onDone: (icons: IconPatch[]) => void; // 应用后的完成回调
     optimize?: (iconIds: string[], options: IconOptimizeOptions) => Promise<IconPatch[]>; // 保存实现，默认走项目图标接口
+    rename?: (iconIds: string[], options: IconRenameOptions) => Promise<IconPatch[]>; // 重命名实现，默认走项目图标接口
 }) => {
     const [sizeEnabled, setSizeEnabled] = useState(true);
     const [size, setSize] = useState(() => clamp(defaultSize, SIZE_MIN, SIZE_MAX));
@@ -118,7 +131,13 @@ export const BatchOptimizeDialog = ({
     const [precision, setPrecision] = useState(2);
     const [removeFill, setRemoveFill] = useState(false);
     const [opticalCenter, setOpticalCenter] = useState(false);
+    const [renameEnabled, setRenameEnabled] = useState(false);
+    const [renamePrefix, setRenamePrefix] = useState("");
+    const [renameSuffix, setRenameSuffix] = useState("");
+    const [renameFind, setRenameFind] = useState("");
+    const [renameReplace, setRenameReplace] = useState("");
     const [zoom, setZoom] = useState(2);
+    const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
     const [saving, setSaving] = useState(false);
 
     const sizeToggleId = useId();
@@ -127,6 +146,7 @@ export const BatchOptimizeDialog = ({
     const strokeToggleId = useId();
     const fillToggleId = useId();
     const centerToggleId = useId();
+    const renameToggleId = useId();
 
     useEffect(() => {
         if (open) {
@@ -139,7 +159,13 @@ export const BatchOptimizeDialog = ({
             setPrecision(2);
             setRemoveFill(false);
             setOpticalCenter(false);
+            setRenameEnabled(false);
+            setRenamePrefix("");
+            setRenameSuffix("");
+            setRenameFind("");
+            setRenameReplace("");
             setZoom(2);
+            setExcluded(new Set());
         }
     }, [open, defaultSize]);
 
@@ -154,6 +180,18 @@ export const BatchOptimizeDialog = ({
         }),
         [sizeEnabled, size, useCurrentColor, strokeEnabled, strokeWidth, precisionEnabled, precision, removeFill, opticalCenter],
     );
+
+    /** 是否至少有一项优化调整要执行 */
+    const hasOptimizeAction = sizeEnabled || useCurrentColor || strokeEnabled || precisionEnabled || removeFill || opticalCenter;
+
+    const hasRenameRule = Boolean(renamePrefix || renameSuffix || renameFind);
+    const renameApplied = renameEnabled && hasRenameRule;
+
+    /** 按后台规则预览新类名：先查找替换，再套前缀 / 后缀 */
+    const renamedName = (className: string): string => {
+        const base = renameFind ? className.split(renameFind).join(renameReplace) : className;
+        return `${renamePrefix}${base}${renameSuffix}`;
+    };
 
     // 预览只在本地计算，不写入后台；图标多时分片生成，改动参数会中断上一轮任务
     const [previews, setPreviews] = useState<(PreviewItem | null)[]>([]);
@@ -220,26 +258,72 @@ export const BatchOptimizeDialog = ({
     const generating = progress.done < progress.total;
     const failedCount = useMemo(() => previews.filter((item) => item?.error).length, [previews]);
 
+    const includedCount = useMemo(() => icons.filter((icon) => !excluded.has(icon.iconId)).length, [icons, excluded]);
+
+    const toggleIncluded = (iconId: string, checked: boolean) => {
+        setExcluded((prev) => {
+            const next = new Set(prev);
+            if (checked) {
+                next.delete(iconId);
+            } else {
+                next.add(iconId);
+            }
+            return next;
+        });
+    };
+
+    const toggleAllIncluded = (checked: boolean) => {
+        setExcluded(checked ? new Set() : new Set(icons.map((icon) => icon.iconId)));
+    };
+
     // 按图标实际画布尺寸预览：1 画布单位 = 1px，画布调整后尺寸变化一目了然
     const beforeCanvases = useMemo(() => icons.map((icon) => readSvgCanvasSize(icon.svg)), [icons]);
     const toPreviewCanvas = (units: number): number => Math.round(clamp(units, PREVIEW_CANVAS_MIN, PREVIEW_CANVAS_MAX));
 
+    // 表头与列表共用同一内容宽度，放大后一起横向滚动，保证列对齐
+    const gridMinWidth = useMemo(() => {
+        let maxCanvas = 0;
+        beforeCanvases.forEach((units) => {
+            const before = toPreviewCanvas(units) * zoom;
+            const after = toPreviewCanvas(sizeEnabled ? size : units) * zoom;
+            maxCanvas = Math.max(maxCanvas, before, after);
+        });
+        return Math.round(maxCanvas * 2 + PREVIEW_META_WIDTH * 2 + PREVIEW_CHECK_WIDTH);
+    }, [beforeCanvases, zoom, sizeEnabled, size]);
+
     const submit = async () => {
-        if (icons.length === 0) {
-            Toast.showError("请先选择图标");
+        const targets = icons.filter((icon) => !excluded.has(icon.iconId));
+        if (targets.length === 0) {
+            Toast.showError("请至少选择一个要更改的图标");
             return;
         }
+        if (renameEnabled && !hasRenameRule) {
+            Toast.showError("请至少填写前缀、后缀或查找内容");
+            return;
+        }
+        if (!hasOptimizeAction && !renameApplied) {
+            Toast.showError("请至少选择一项更改");
+            return;
+        }
+        const iconIds = targets.map((icon) => icon.iconId);
         setSaving(true);
         try {
-            const updated = await optimize(
-                icons.map((icon) => icon.iconId),
-                options,
-            );
-            Toast.showSuccess(`已优化 ${updated.length} 个图标`);
+            const merged = new Map<string, IconPatch>();
+            const collect = (patches: IconPatch[]) => {
+                patches.forEach((patch) => merged.set(patch.iconId, { ...merged.get(patch.iconId), ...patch }));
+            };
+            if (hasOptimizeAction) {
+                collect(await optimize(iconIds, options));
+            }
+            if (renameApplied) {
+                collect(await rename(iconIds, { prefix: renamePrefix, suffix: renameSuffix, find: renameFind, replace: renameReplace }));
+            }
+            const updated = Array.from(merged.values());
+            Toast.showSuccess(`已更新 ${updated.length} 个图标`);
             onDone(updated);
             setOpen(false);
         } catch (error) {
-            Toast.showError(error instanceof Error ? error.message : "优化失败");
+            Toast.showError(error instanceof Error ? error.message : "应用失败");
         } finally {
             setSaving(false);
         }
@@ -249,7 +333,7 @@ export const BatchOptimizeDialog = ({
 
     return (
         <Dialog open={open} setOpen={setOpen} width={DIALOG_SIZE_LARGE} clickMaskerToClose>
-            <Dialog.Title>批量优化（{icons.length} 个图标）</Dialog.Title>
+            <Dialog.Title>批量修改</Dialog.Title>
             <Dialog.Content>
                 <form {...formProps}>
                     <div className="dialog-body optimize-dialog">
@@ -327,25 +411,63 @@ export const BatchOptimizeDialog = ({
                                         />
                                     </div>
                                 </div>
+                                <div className="ui-form-group">
+                                    <div className="ui-form-group__title">重命名</div>
+                                    <div className="optimize-rename">
+                                        <label className="optimize-rename__toggle" htmlFor={renameToggleId}>
+                                            <input
+                                                id={renameToggleId}
+                                                type="checkbox"
+                                                checked={renameEnabled}
+                                                onChange={(event) => setRenameEnabled(event.target.checked)}
+                                            />
+                                            <span>批量重命名类名</span>
+                                        </label>
+                                        <input
+                                            className="ui-input"
+                                            placeholder="添加前缀，例如 project-"
+                                            value={renamePrefix}
+                                            disabled={!renameEnabled}
+                                            onChange={(event) => setRenamePrefix(event.target.value)}
+                                        />
+                                        <input
+                                            className="ui-input"
+                                            placeholder="添加后缀，例如 -outline"
+                                            value={renameSuffix}
+                                            disabled={!renameEnabled}
+                                            onChange={(event) => setRenameSuffix(event.target.value)}
+                                        />
+                                        <div className="optimize-rename__replace">
+                                            <input
+                                                className="ui-input"
+                                                placeholder="查找"
+                                                value={renameFind}
+                                                disabled={!renameEnabled}
+                                                onChange={(event) => setRenameFind(event.target.value)}
+                                            />
+                                            <input
+                                                className="ui-input"
+                                                placeholder="替换为"
+                                                value={renameReplace}
+                                                disabled={!renameEnabled}
+                                                onChange={(event) => setRenameReplace(event.target.value)}
+                                            />
+                                        </div>
+                                        <p className="ui-note">重名时自动追加序号，例如 icon-2。</p>
+                                    </div>
+                                </div>
                             </div>
                         </aside>
                         <section className="optimize-preview">
-                            <div className="optimize-preview__head">
-                                <span>修改前</span>
-                                <span>
-                                    修改后
-                                    {failedCount > 0 ? <em className="optimize-preview__failed">{failedCount} 个失败</em> : null}
-                                </span>
-                                <div className="optimize-preview__zoom">
-                                    <span className="optimize-preview__zoom-label">放大</span>
-                                    <Select
-                                        items={ZOOM_LEVELS.map((level) => ({ value: String(level), label: `${level}x` }))}
-                                        value={String(zoom)}
-                                        onChange={(value) => setZoom(Number(value) || 1)}
-                                        triggerClassName="ui-btn small"
-                                        aria-label="放大倍数"
-                                    />
-                                </div>
+                            <div className="optimize-preview__zoom">
+                                <span className="optimize-preview__zoom-label">放大</span>
+                                <Select
+                                    items={ZOOM_LEVELS.map((level) => ({ value: String(level), label: `${level}x` }))}
+                                    value={String(zoom)}
+                                    onChange={(value) => setZoom(Number(value) || 1)}
+                                    triggerClassName="ui-btn small"
+                                    aria-label="放大倍数"
+                                />
                             </div>
                             {generating ? (
                                 <div className="optimize-preview__progress">
@@ -355,30 +477,62 @@ export const BatchOptimizeDialog = ({
                                     </span>
                                 </div>
                             ) : null}
-                            <ul className="optimize-preview__list">
-                                {icons.map((icon, index) => {
-                                    const preview = previews[index];
-                                    const beforeCanvas = toPreviewCanvas(beforeCanvases[index]) * zoom;
-                                    const afterCanvas = toPreviewCanvas(sizeEnabled ? size : beforeCanvases[index]) * zoom;
-                                    const columnWidth = Math.max(beforeCanvas, afterCanvas) + PREVIEW_META_WIDTH;
-                                    return (
-                                        <li
-                                            key={icon.iconId}
-                                            className="optimize-preview__row"
-                                            style={{ minWidth: columnWidth * 2 }}
-                                        >
-                                            <PreviewCell icon={icon} svg={icon.svg} canvas={beforeCanvas} />
-                                            <PreviewCell
-                                                icon={icon}
-                                                svg={preview?.svg}
-                                                status={preview ? (preview.error ? "error" : undefined) : "pending"}
-                                                canvas={afterCanvas}
+                            <div className="optimize-preview__scroll">
+                                <div className="optimize-preview__grid" style={{ minWidth: gridMinWidth }}>
+                                    <div className="optimize-preview__head">
+                                        <div className="optimize-preview__check-all">
+                                            <SelectAllToggle
+                                                selected={includedCount}
+                                                total={icons.length}
+                                                onChange={toggleAllIncluded}
+                                                hideText
                                             />
-                                        </li>
-                                    );
-                                })}
-                                {icons.length === 0 ? <li className="optimize-preview__empty">没有可优化的图标</li> : null}
-                            </ul>
+                                        </div>
+                                        <span>修改前</span>
+                                        <span>
+                                            修改后
+                                            {failedCount > 0 ? (
+                                                <em className="optimize-preview__failed">{failedCount} 个失败</em>
+                                            ) : null}
+                                        </span>
+                                    </div>
+                                    <ul className="optimize-preview__list">
+                                        {icons.map((icon, index) => {
+                                            const preview = previews[index];
+                                            const isExcluded = excluded.has(icon.iconId);
+                                            const beforeCanvas = toPreviewCanvas(beforeCanvases[index]) * zoom;
+                                            const afterCanvas =
+                                                toPreviewCanvas(sizeEnabled ? size : beforeCanvases[index]) * zoom;
+                                            return (
+                                                <li key={icon.iconId} className="optimize-preview__row">
+                                                    <label className="optimize-preview__check" title="更改">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!isExcluded}
+                                                            aria-label="更改"
+                                                            onChange={(event) =>
+                                                                toggleIncluded(icon.iconId, event.target.checked)
+                                                            }
+                                                        />
+                                                    </label>
+                                                    <PreviewCell icon={icon} svg={icon.svg} canvas={beforeCanvas} />
+                                                    <PreviewCell
+                                                        icon={icon}
+                                                        svg={preview?.svg}
+                                                        status={preview ? (preview.error ? "error" : undefined) : "pending"}
+                                                        canvas={afterCanvas}
+                                                        excluded={isExcluded}
+                                                        name={renameApplied && !isExcluded ? renamedName(icon.className) : undefined}
+                                                    />
+                                                </li>
+                                            );
+                                        })}
+                                        {icons.length === 0 ? (
+                                            <li className="optimize-preview__empty">没有可优化的图标</li>
+                                        ) : null}
+                                    </ul>
+                                </div>
+                            </div>
                         </section>
                     </div>
                 </form>
@@ -387,8 +541,8 @@ export const BatchOptimizeDialog = ({
                 <button className="ui-btn" type="button" onClick={() => setOpen(false)}>
                     取消
                 </button>
-                <button className="ui-btn primary" {...submitProps} disabled={saving || icons.length === 0}>
-                    {saving ? "应用中..." : "应用"}
+                <button className="ui-btn primary" {...submitProps} disabled={saving || includedCount === 0}>
+                    {saving ? "应用中..." : `应用(${includedCount}/${icons.length})`}
                 </button>
             </Dialog.Action>
         </Dialog>

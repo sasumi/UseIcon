@@ -1,4 +1,4 @@
-import type { IconInput, IconOptimizeOptions, LibraryCategoryCount, LibraryIcon, PageResult, BatchCreateOptions } from "@/types";
+import type { IconInput, IconOptimizeOptions, IconRenameOptions, LibraryCategoryCount, LibraryIcon, PageResult, BatchCreateOptions } from "@/types";
 import { computeIconPhashes } from "@/utils/iconMatcher";
 import { centerSvgOptically } from "@/utils/opticalCenter";
 import { normalizeSvg, optimizeSvg, sanitizeIconName } from "@/utils/svg";
@@ -178,7 +178,7 @@ export const optimizeLibraryIcons = async (icons: LibraryIcon[], options: IconOp
 /** 批量重命名公共库图标（重名由后台自动加序号） */
 export const renameLibraryIcons = (
     icons: LibraryIcon[],
-    options: { prefix?: string; suffix?: string; find?: string; replace?: string },
+    options: IconRenameOptions,
 ): Promise<LibraryIcon[]> => {
     const items = icons.map((icon) => {
         let className = icon.className;

@@ -7,7 +7,6 @@ import { SidePanel } from "@/components/common/SidePanel";
 import { TipBubble } from "@/components/common/TipBubble";
 import { DisplayControl } from "@/components/library/DisplayPanel";
 import { BatchOptimizeDialog } from "@/components/project/BatchOptimizeDialog";
-import { BatchRenameDialog } from "@/components/project/BatchRenameDialog";
 import { IconCard } from "@/components/project/IconCard";
 import type { IconDetailPatch } from "@/components/project/IconDetailDialog";
 import { IconDetailDialog } from "@/components/project/IconDetailDialog";
@@ -15,7 +14,6 @@ import { UploadDialog } from "@/components/project/UploadDialog";
 import { LIBRARY_SORT_STORAGE_KEY } from "@/config";
 import { sortLibraryCategories } from "@/data/library";
 import { useClearOnBlankClick } from "@/hooks/useClearOnBlankClick";
-import { useDragSelect } from "@/hooks/useDragSelect";
 import { useIconPhashes } from "@/hooks/useIconPhashes";
 import { useTimedTip } from "@/hooks/useTimedTip";
 import { useAuthStore } from "@/store/authStore";
@@ -85,20 +83,13 @@ export const LibraryPage = () => {
     const [selected, setSelected] = useState<string[]>([]);
     const [uploadOpen, setUploadOpen] = useState(false);
     const [optimizeOpen, setOptimizeOpen] = useState(false);
-    const [renameOpen, setRenameOpen] = useState(false);
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
-    const gridRef = useRef<HTMLUListElement | null>(null);
     const scrollRef = useRef<HTMLDivElement | null>(null);
     const accountId = user?.id ?? "";
 
     // 首屏与筛选切换统一走 useAsync：加载中 / 出错 / 空数据互不混淆
     const listState = useAsync(() => loadLibrary({ keyword: debouncedKeyword, category }), [accountId, debouncedKeyword, category, reloadToken]);
 
-    const dragBox = useDragSelect({
-        containerRef: gridRef,
-        enabled: icons.length > 0,
-        onSelect: (ids, additive) => setSelected((prev) => (additive ? Array.from(new Set([...prev, ...ids])) : ids)),
-    });
     useClearOnBlankClick(() => setSelected((prev) => (prev.length === 0 ? prev : [])));
 
     const reload = () => {
@@ -367,11 +358,7 @@ export const LibraryPage = () => {
                                 <>
                                     <button className="ui-btn small" type="button" onClick={() => setOptimizeOpen(true)}>
                                         <AppIcon name="settings" />
-                                        优化
-                                    </button>
-                                    <button className="ui-btn small" type="button" onClick={() => setRenameOpen(true)}>
-                                        <AppIcon name="edit" />
-                                        重命名
+                                        批量修改
                                     </button>
                                     <button className="ui-btn small danger" type="button" onClick={() => removeIcons(selected)}>
                                         <AppIcon name="trash" />
@@ -421,9 +408,9 @@ export const LibraryPage = () => {
                     <EmptyState text="没有匹配的图标，换个关键词试试" />
                 ) : (
                     <div ref={scrollRef} className="icon-scroll">
-                        <ul ref={gridRef} className="icon-grid">
+                        <ul className="icon-grid">
                             {sortedIcons.map((icon) => (
-                                <li key={icon.iconId} data-select-id={icon.iconId}>
+                                <li key={icon.iconId}>
                                     <IconCard
                                         icon={icon}
                                         favorite={isFavorite(icon)}
@@ -470,8 +457,6 @@ export const LibraryPage = () => {
                         </div>
                     </div>
                 )}
-
-                {dragBox && <div className="drag-select-box" style={{ left: dragBox.left, top: dragBox.top, width: dragBox.width, height: dragBox.height }} />}
             </div>
 
             <IconDetailDialog
@@ -495,18 +480,20 @@ export const LibraryPage = () => {
                 setOpen={setOptimizeOpen}
                 icons={selectedIcons}
                 defaultSize={24}
-                optimize={(_, options) => api.library.optimizeLibraryIcons(selectedIcons, options)}
-                onDone={() => {
-                    setSelected([]);
-                    refreshList();
+                optimize={(iconIds, options) => {
+                    const ids = new Set(iconIds);
+                    return api.library.optimizeLibraryIcons(
+                        selectedIcons.filter((icon) => ids.has(icon.iconId)),
+                        options,
+                    );
                 }}
-            />
-
-            <BatchRenameDialog
-                open={renameOpen}
-                setOpen={setRenameOpen}
-                iconIds={selected}
-                rename={(_, options) => api.library.renameLibraryIcons(selectedIcons, options)}
+                rename={(iconIds, options) => {
+                    const ids = new Set(iconIds);
+                    return api.library.renameLibraryIcons(
+                        selectedIcons.filter((icon) => ids.has(icon.iconId)),
+                        options,
+                    );
+                }}
                 onDone={() => {
                     setSelected([]);
                     refreshList();
