@@ -26,6 +26,7 @@ import { SidePanel } from "@/components/common/SidePanel";
 import { ExportMenu } from "@/components/project/ExportMenu";
 import { IconCard } from "@/components/project/IconCard";
 import { DisplayControl } from "@/components/library/DisplayPanel";
+import { Flex } from "@/components/common/Flex";
 
 type FavoritesSortMode = "default" | "name-asc" | "name-desc" | "smart";
 
@@ -255,7 +256,7 @@ export const FavoritesPage = () => {
                         <input className="ui-input" type="search" placeholder="搜索" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
                     </div>
                     {selected.length > 0 && (
-                        <div className="batch-actions">
+                        <Flex gap="0.35rem">
                             <span className="tip-anchor">
                                 <button className="ui-btn small" type="button" onClick={addSelectedToCart}>
                                     <AppIcon name="cart" />
@@ -268,7 +269,7 @@ export const FavoritesPage = () => {
                                 <AppIcon name="trash" />
                                 删除
                             </button>
-                        </div>
+                        </Flex>
                     )}
                     <div className="spacer" />
                     <DropdownMenu

@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import type { IconItem } from "@/types";
 import { downloadBlob, downloadText } from "./download";
 import { svgToPngBlob } from "./image";
-import { optimizeSvg } from "./svg";
+import { optimizeSvg, SVG_PAINT_ATTRS } from "./svg";
 
 /** iconfont 导入规范尺寸 */
 const ICONFONT_SIZE = 200;
@@ -47,13 +47,22 @@ export const exportPngZip = async (
     downloadBlob(await zip.generateAsync({ type: "blob" }), `${safeFolderName(projectName)}-png.zip`);
 };
 
+/** 读取 <svg> 根标签上的绘制属性（导出 sprite 时转移到 symbol 上，否则样式会丢） */
+const rootPaintAttrs = (source: string): string => {
+    const rootTag = /^<svg[^>]*>/i.exec(source)?.[0] || "";
+    return SVG_PAINT_ATTRS.map((name) => {
+        const value = new RegExp(`\\s${name}\\s*=\\s*"([^"]*)"`, "i").exec(rootTag)?.[1];
+        return value ? ` ${name}="${value}"` : "";
+    }).join("");
+};
+
 /** 导出 SVG Sprite（symbol 集合） */
 export const exportSprite = (icons: IconItem[]): string => {
     const symbols = icons
         .map((icon) => {
             const inner = icon.svg.replace(/^<svg[^>]*>/i, "").replace(/<\/svg>$/i, "");
             const viewBox = /viewBox="([^"]+)"/i.exec(icon.svg)?.[1] || "0 0 24 24";
-            return `<symbol id="icon-${icon.className}" viewBox="${viewBox}">${inner}</symbol>`;
+            return `<symbol id="icon-${icon.className}" viewBox="${viewBox}"${rootPaintAttrs(icon.svg)}>${inner}</symbol>`;
         })
         .join("");
     return `<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${symbols}</svg>`;

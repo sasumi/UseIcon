@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Dialog, InlineTextEditor, Toast } from "minreact-ui";
+import { ColorPicker, Dialog, DropdownMenu, InlineTextEditor, MenuItemDivider, Toast } from "minreact-ui";
+import type { MenuEntry } from "minreact-ui";
 import { DEFAULT_CODE_TEMPLATE, DEFAULT_ICON_SIZE } from "@/config";
 import type { IconItem } from "@/types";
 import { rememberCategory } from "@/utils/category";
@@ -8,12 +9,21 @@ import { svgToPngBlob } from "@/utils/image";
 import { applyIconSize, detectSvgPaint, renderIconCode, setSvgColor, setSvgFillColor, setSvgScale, setSvgStrokeWidth } from "@/utils/svg";
 import { AppIcon } from "@/components/common/AppIcon";
 import { CategoryInput } from "@/components/common/CategoryInput";
-import { ColorPicker } from "@/components/common/ColorPicker";
 import { SvgPreview } from "@/components/common/SvgPreview";
 import { TagEditor } from "@/components/common/TagEditor";
 import { SvgCodeDialog } from "@/components/project/SvgCodeDialog";
+import { Divider } from "../common/Divider";
 
 const DIALOG_WIDTH = "38em";
+
+/** 复制 / 导出菜单项 */
+const SHARE_ITEMS: MenuEntry[] = [
+    { value: "copy-code", label: "复制代码", icon: <AppIcon name="copy" /> },
+    { value: "copy-svg", label: "复制 SVG", icon: <AppIcon name="code" /> },
+    MenuItemDivider,
+    { value: "download-svg", label: "下载 SVG", icon: <AppIcon name="download" /> },
+    { value: "download-png", label: "下载 PNG", icon: <AppIcon name="image" /> },
+];
 
 /** 详情对话框使用的图标字段（项目图标 / 公共库图标通用） */
 export type IconDetailTarget = Pick<IconItem, "iconId" | "className" | "svg" | "tags"> & { category?: string };
@@ -155,9 +165,35 @@ export const IconDetailDialog = ({
         }
     };
 
+    /** 复制 / 导出菜单 */
+    const share = (value: unknown) => {
+        switch (value) {
+            case "copy-code":
+                void copyText(code).then(
+                    () => Toast.showSuccess("代码已复制"),
+                    () => Toast.showError("复制失败"),
+                );
+                break;
+            case "copy-svg":
+                void copyText(svg).then(
+                    () => Toast.showSuccess("SVG 源码已复制"),
+                    () => Toast.showError("复制失败"),
+                );
+                break;
+            case "download-svg":
+                downloadSvg({ className, svg }, size);
+                break;
+            case "download-png":
+                void downloadPng();
+                break;
+            default:
+                break;
+        }
+    };
+
     return (
         <Dialog open={open} setOpen={setOpen} width={DIALOG_WIDTH} clickMaskerToClose>
-            <Dialog.Title>{icon.className}</Dialog.Title>
+            <Dialog.Title>图标信息</Dialog.Title>
             <Dialog.Content>
                 <div className="dialog-body">
                     <div className="detail-head">
@@ -200,7 +236,6 @@ export const IconDetailDialog = ({
                                         </div>
                                     )
                                 ))}
-
                         </div>
                         <div className="detail-preview">
                             <SvgPreview svg={svg} size={64} />
@@ -241,30 +276,14 @@ export const IconDetailDialog = ({
                                             value={strokeWidth || originalStroke || 1.75}
                                             onChange={(event) => setStrokeWidth(event.target.value)}
                                         />
-                                        <span className="detail-appearance__value">
-                                            {strokeWidth ? `${strokeWidth}（调整后）` : `原始${originalStroke ? ` ${originalStroke}` : ""}`}
-                                        </span>
-                                        {strokeWidth && (
-                                            <button className="ui-btn button-small button-tonal" type="button" onClick={() => setStrokeWidth("")}>
-                                                复位
-                                            </button>
-                                        )}
+                                        <span className="detail-appearance__value">{strokeWidth || originalStroke}</span>
+                                        {strokeWidth && originalStroke != Number(strokeWidth) && <AppIcon name="undo" onClick={() => setStrokeWidth("")} />}
                                     </div>
                                 )}
                                 <div className="detail-appearance__row">
                                     <label>图标颜色</label>
-                                    <ColorPicker
-                                        value={color}
-                                        fallback="#1f1f1f"
-                                        title={color || "默认跟随文字色"}
-                                        onChange={setColor}
-                                    />
+                                    <ColorPicker value={color} fallback="#1f1f1f" emptyLabel="默认" title={color || "默认跟随文字色"} onChange={setColor} />
                                     <span className="detail-appearance__value">{color || "currentColor"}</span>
-                                    {color && (
-                                        <button className="ui-btn button-small button-tonal" type="button" onClick={() => setColor("")}>
-                                            默认
-                                        </button>
-                                    )}
                                 </div>
                                 {paint.filled && (
                                     <div className="detail-appearance__row">
@@ -272,15 +291,11 @@ export const IconDetailDialog = ({
                                         <ColorPicker
                                             value={fillColor}
                                             fallback="#1f1f1f"
+                                            emptyLabel="默认"
                                             title={fillColor || "默认跟随文字色"}
                                             onChange={setFillColor}
                                         />
                                         <span className="detail-appearance__value">{fillColor || "currentColor"}</span>
-                                        {fillColor && (
-                                            <button className="ui-btn button-small button-tonal" type="button" onClick={() => setFillColor("")}>
-                                                默认
-                                            </button>
-                                        )}
                                     </div>
                                 )}
                                 <div className="detail-appearance__row">
@@ -304,51 +319,6 @@ export const IconDetailDialog = ({
                             </div>
                         )}
                     </div>
-
-                    <div className="detail-code">
-                        <div className="toolbar">
-                            {canEdit && (
-                                <button className="ui-btn small button-tonal" type="button" onClick={() => setCodeOpen(true)}>
-                                    <AppIcon name="code" />
-                                    编辑 SVG 源码
-                                </button>
-                            )}
-                            <button
-                                className="ui-btn small"
-                                type="button"
-                                onClick={() =>
-                                    void copyText(code).then(
-                                        () => Toast.showSuccess("代码已复制"),
-                                        () => Toast.showError("复制失败"),
-                                    )
-                                }
-                            >
-                                <AppIcon name="copy" />
-                                复制代码
-                            </button>
-                            <button
-                                className="ui-btn small"
-                                type="button"
-                                onClick={() =>
-                                    void copyText(svg).then(
-                                        () => Toast.showSuccess("SVG 源码已复制"),
-                                        () => Toast.showError("复制失败"),
-                                    )
-                                }
-                            >
-                                <AppIcon name="code" />
-                                复制 SVG
-                            </button>
-                            <button className="ui-btn small" type="button" onClick={() => downloadSvg({ className, svg }, size)}>
-                                <AppIcon name="download" />
-                                SVG
-                            </button>
-                            <button className="ui-btn small" type="button" onClick={() => void downloadPng()}>
-                                <AppIcon name="image" />
-                                PNG
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </Dialog.Content>
             <SvgCodeDialog
@@ -366,20 +336,37 @@ export const IconDetailDialog = ({
             />
             <Dialog.Action align="right">
                 {canEdit && onDelete && (
-                    <button className="ui-btn danger" type="button" onClick={remove}>
-                        <AppIcon name="trash" />
-                        删除
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                        <button className="ui-btn button-tonal danger" type="button" onClick={remove}>
+                            <AppIcon name="trash" />
+                            删除
+                        </button>
+                        <Divider />
+                        <button className="ui-btn small button-tonal" type="button" onClick={() => setCodeOpen(true)}>
+                            <AppIcon name="code" />
+                            编辑源码
+                        </button>
+                    </div>
                 )}
                 <div className="spacer" />
-                <button className="ui-btn" type="button" onClick={() => setOpen(false)}>
-                    关闭
-                </button>
                 {canEdit && (
                     <button className="ui-btn primary" type="button" disabled={saving} onClick={() => void save()}>
                         {saving ? "保存中..." : "保存修改"}
                     </button>
                 )}
+                <DropdownMenu
+                    items={SHARE_ITEMS}
+                    onChange={share}
+                    trigger={
+                        <button className="ui-btn" type="button">
+                            <AppIcon name="download" />
+                            导出
+                        </button>
+                    }
+                />
+                <button className="ui-btn" type="button" onClick={() => setOpen(false)}>
+                    关闭
+                </button>
             </Dialog.Action>
         </Dialog>
     );

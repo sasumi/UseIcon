@@ -134,6 +134,12 @@ export interface IconInput {
     category?: string; // 分类
 }
 
+/** 批量创建的进度与中断控制 */
+export interface BatchCreateOptions {
+    onProgress?: (done: number, total: number) => void; // 进度回调（按图标计数，含计算指纹与上传两个阶段）
+    isAborted?: () => boolean; // 中断检查，在分片之间生效
+}
+
 /** 上传/导入时解析出的候选图标 */
 export interface IconCandidate extends IconInput {
     key: string; // 本地唯一键

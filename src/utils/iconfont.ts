@@ -1,7 +1,21 @@
 import type { IconCandidate } from "@/types";
-import { sanitizeIconName } from "./svg";
+import { sanitizeIconName, SVG_PAINT_ATTRS } from "./svg";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** 线性图标默认样式：sprite 未携带绘制样式时按内置图标的描边风格补回 */
+const LINE_ICON_ATTRS = ` fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"`;
+
+/** 读取元素上的绘制属性，序列化成属性串（含前导空格） */
+const paintAttrsOf = (element: Element): string =>
+    SVG_PAINT_ATTRS.map((name) => {
+        const value = element.getAttribute(name);
+        return value ? ` ${name}="${value.replace(/"/g, "&quot;")}"` : "";
+    }).join("");
+
+/** 内容与所属节点都没有绘制样式时，按线性图标补默认样式 */
+const withPaint = (inner: string, attrs: string): string =>
+    (attrs || /\s(fill|stroke|style)\s*=/i.test(inner) ? attrs : LINE_ICON_ATTRS) || "";
 
 /** 从任意文本中截取第一个 <svg>…</svg>（iconfont.js 里是 JS 字符串） */
 const extractSvgMarkup = (source: string): string => {
@@ -18,10 +32,17 @@ const parseXml = (markup: string): Document => {
     return doc;
 };
 
-const buildCandidate = (name: string, viewBox: string, inner: string, key: string): IconCandidate => ({
+const buildCandidate = (
+    name: string,
+    viewBox: string,
+    inner: string,
+    key: string,
+    attrs = "",
+    lineDefault = true,
+): IconCandidate => ({
     key,
     className: sanitizeIconName(name),
-    svg: `<svg xmlns="${SVG_NS}" viewBox="${viewBox}">${inner}</svg>`,
+    svg: `<svg xmlns="${SVG_NS}" viewBox="${viewBox}"${lineDefault ? withPaint(inner, attrs) : attrs}>${inner}</svg>`,
     tags: [],
     checked: true,
 });
@@ -37,7 +58,7 @@ const parseSymbols = (doc: Document): IconCandidate[] => {
             const inner = Array.from(symbol.childNodes)
                 .map((node) => new XMLSerializer().serializeToString(node))
                 .join("");
-            return buildCandidate(name || id, viewBox, inner, `symbol-${id}`);
+            return buildCandidate(name || id, viewBox, inner, `symbol-${id}`, paintAttrsOf(symbol));
         })
         .filter((candidate) => candidate.className);
 };
@@ -65,7 +86,7 @@ const parseSvgFont = (doc: Document): IconCandidate[] => {
             const name = glyphName || (codePoint ? `icon-${codePoint.toString(16)}` : `glyph-${index + 1}`);
             const advance = Number(glyph.getAttribute("horiz-adv-x")) || defaultWidth;
             const inner = `<g transform="translate(0 ${ascent}) scale(1 -1)"><path d="${d}"/></g>`;
-            return buildCandidate(name, `0 0 ${advance} ${unitsPerEm}`, inner, `glyph-${name}-${index}`);
+            return buildCandidate(name, `0 0 ${advance} ${unitsPerEm}`, inner, `glyph-${name}-${index}`, "", false);
         })
         .filter((candidate): candidate is IconCandidate => Boolean(candidate));
 };
@@ -105,7 +126,7 @@ export const parseSvgCollection = (source: string): IconCandidate[] => {
                 .join("");
             const id = root.getAttribute("id") || "";
             const label = root.getAttribute("data-icon") || root.getAttribute("aria-label") || id || `svg-${index + 1}`;
-            return buildCandidate(label, viewBox, inner, `svg-${index}-${label}`);
+            return buildCandidate(label, viewBox, inner, `svg-${index}-${label}`, paintAttrsOf(root));
         })
         .filter((candidate) => candidate.svg.length > 40);
 };

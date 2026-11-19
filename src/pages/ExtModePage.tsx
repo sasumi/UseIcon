@@ -424,10 +424,10 @@ export const ExtModePage = ({ projectId }: { projectId: string }) => {
                                         width: previewSize,
                                         height: previewSize,
                                         padding: display.padding,
-                                        background: display.background || undefined,
                                         color: display.color || undefined,
                                     }}
                                 >
+                                    {display.background && <span className="preview-fill" style={{ background: display.background }} />}
                                     <SvgPreview svg={icon.svg} size={display.size} />
                                 </span>
                                 <span className="extmode-icon__name">{icon.className}</span>

@@ -167,13 +167,6 @@
     }
 }
 
-.batch-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-}
-
 // ---------- 图标卡片 ----------
 .icon-grid {
     display: grid;
@@ -589,7 +582,6 @@ body.is-drag-selecting {
     }
 
     &__value {
-        flex: 0 0 4.5em;
         color: var(--color-secondary);
         font-size: 0.72rem;
         text-align: right;
@@ -597,22 +589,6 @@ body.is-drag-selecting {
 }
 
 // ---------- 上传 / 候选列表 ----------
-.upload-paste {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding-top: 0.2rem;
-
-    .ui-input {
-        flex: 1 1 auto;
-        min-width: 0;
-    }
-
-    .ui-btn {
-        flex: none;
-    }
-}
-
 .upload-candidates {
     display: flex;
     flex-direction: column;
@@ -622,13 +598,20 @@ body.is-drag-selecting {
 
     // 候选图标复用项目图标卡片
     .icon-grid {
-        max-height: 15rem;
+        max-height: 26rem;
         overflow: auto;
         padding-right: 0.2rem;
         @include scrollbar(8px);
+
+        // 卡片高度按内容自适应，预览放大时不会压到名称行
+        > li {
+            aspect-ratio: auto;
+        }
     }
 
     .icon-card {
+        gap: 0.35rem;
+        justify-content: flex-start;
         padding: 0.5rem 0.4rem;
         cursor: default;
 
@@ -640,6 +623,17 @@ body.is-drag-selecting {
                 opacity: 1;
             }
         }
+    }
+
+    .icon-card__preview {
+        flex: none;
+    }
+
+    // 名称与标签跟随预览下方排版（列表里是绝对定位浮在卡片底部，这里会与预览重叠）
+    .icon-card__meta {
+        position: static;
+        padding: 0 0.2em;
+        background: transparent;
     }
 
     .candidate-meta__name,
@@ -766,12 +760,6 @@ body.is-drag-selecting {
     > .ui-input:focus {
         border-color: var(--color-link);
     }
-}
-
-.detail-code {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
 }
 
 .svg-code-editor {

@@ -2,6 +2,9 @@ import type { IconItem, IconOptimizeOptions } from "@/types";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+/** 需要在 sprite / 图标之间保留的绘制属性（移动节点后图形样式不变） */
+export const SVG_PAINT_ATTRS = ["fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "color", "style"];
+
 /** 解析 SVG 源码，失败返回 null */
 export const parseSvg = (source: string): SVGSVGElement | null => {
     if (!source) {

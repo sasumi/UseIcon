@@ -1,4 +1,4 @@
-import type { IconInput, IconOptimizeOptions, LibraryCategoryCount, LibraryIcon, PageResult } from "@/types";
+import type { IconInput, IconOptimizeOptions, LibraryCategoryCount, LibraryIcon, PageResult, BatchCreateOptions } from "@/types";
 import { computeIconPhashes } from "@/utils/iconMatcher";
 import { normalizeSvg, optimizeSvg, sanitizeIconName } from "@/utils/svg";
 import { ApiError, iconGetJSON, iconPostJSON } from "./http";
@@ -74,7 +74,7 @@ export const listLibraryIconsPaged = (
 };
 
 /** 批量新增公共库图标（类名由后台全库去重） */
-export const createLibraryIcons = async (inputs: IconInput[]): Promise<LibraryIcon[]> => {
+export const createLibraryIcons = async (inputs: IconInput[], options?: BatchCreateOptions): Promise<LibraryIcon[]> => {
     if (inputs.length === 0) {
         throw new ApiError("没有可导入的图标");
     }
@@ -87,16 +87,22 @@ export const createLibraryIcons = async (inputs: IconInput[]): Promise<LibraryIc
         }
         return { className: input.className, svg, tags: cleanTags(input.tags), category: input.category, phash: "" };
     });
-    const phashes = await computeIconPhashes(icons.map((icon) => icon.svg));
+    const total = icons.length * 2;
+    const phashes = await computeIconPhashes(icons.map((icon) => icon.svg), (done) => options?.onProgress?.(done, total));
     icons.forEach((icon, index) => {
         icon.phash = phashes[index];
     });
+    options?.onProgress?.(icons.length, total);
 
     const created: LibraryIcon[] = [];
     for (let start = 0; start < icons.length; start += CREATE_CHUNK_SIZE) {
+        if (options?.isAborted?.()) {
+            break;
+        }
         const chunk = icons.slice(start, start + CREATE_CHUNK_SIZE);
         const data = await iconPostJSON("library/create", { icons: chunk });
         created.push(...((data?.list ?? []) as LibraryIcon[]));
+        options?.onProgress?.(icons.length + created.length, total);
     }
     return created;
 };

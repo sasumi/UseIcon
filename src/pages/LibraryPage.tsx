@@ -1,7 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, DropdownMenu, ErrorHolder, LoadingHolder, Toast, useAsync } from "minreact-ui";
-import type { MenuItemData } from "minreact-ui";
 import { api } from "@/api";
+import { AppIcon } from "@/components/common/AppIcon";
+import { Divider } from "@/components/common/Divider";
+import { EmptyState } from "@/components/common/EmptyState";
+import { Flex } from "@/components/common/Flex";
+import { SidePanel } from "@/components/common/SidePanel";
+import { TipBubble } from "@/components/common/TipBubble";
+import { DisplayControl } from "@/components/library/DisplayPanel";
+import { BatchOptimizeDialog } from "@/components/project/BatchOptimizeDialog";
+import { BatchRenameDialog } from "@/components/project/BatchRenameDialog";
+import { IconCard } from "@/components/project/IconCard";
+import type { IconDetailPatch } from "@/components/project/IconDetailDialog";
+import { IconDetailDialog } from "@/components/project/IconDetailDialog";
+import { UploadDialog } from "@/components/project/UploadDialog";
 import { LIBRARY_SORT_STORAGE_KEY } from "@/config";
 import { sortLibraryCategories } from "@/data/library";
 import { useClearOnBlankClick } from "@/hooks/useClearOnBlankClick";
@@ -9,25 +19,15 @@ import { useDragSelect } from "@/hooks/useDragSelect";
 import { useIconPhashes } from "@/hooks/useIconPhashes";
 import { useTimedTip } from "@/hooks/useTimedTip";
 import { useAuthStore } from "@/store/authStore";
-import { openLoginDialog } from "@/store/loginDialogStore";
 import { cartItemFromLibrary, useCartStore } from "@/store/cartStore";
 import { useLibraryStore } from "@/store/libraryStore";
+import { openLoginDialog } from "@/store/loginDialogStore";
 import type { LibraryIcon } from "@/types";
 import { copyText, downloadPng } from "@/utils/download";
 import { sortIconsBySimilarity } from "@/utils/iconMatcher";
-import { AppIcon } from "@/components/common/AppIcon";
-import { EmptyState } from "@/components/common/EmptyState";
-import { SelectAllToggle } from "@/components/common/SelectAllToggle";
-import { SidePanel } from "@/components/common/SidePanel";
-import { TipBubble } from "@/components/common/TipBubble";
-import { IconCard } from "@/components/project/IconCard";
-import { IconDetailDialog } from "@/components/project/IconDetailDialog";
-import type { IconDetailPatch } from "@/components/project/IconDetailDialog";
-import { BatchOptimizeDialog } from "@/components/project/BatchOptimizeDialog";
-import { BatchRenameDialog } from "@/components/project/BatchRenameDialog";
-import { UploadDialog } from "@/components/project/UploadDialog";
-import { DisplayControl } from "@/components/library/DisplayPanel";
-import { Divider } from "@/components/common/Divider";
+import type { MenuItemData } from "minreact-ui";
+import { Dialog, DropdownMenu, ErrorHolder, LoadingHolder, Toast, useAsync } from "minreact-ui";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type LibrarySortMode = "default" | "name-asc" | "name-desc" | "smart";
 
@@ -345,17 +345,13 @@ export const LibraryPage = () => {
 
             <div className="content-panel padded with-icon-scroll">
                 <div className="content-toolbar project-toolbar">
-                    <SelectAllToggle
-                        selected={selectedIcons.length}
-                        total={icons.length}
-                        onChange={(checked) => setSelected(checked ? icons.map((icon) => icon.iconId) : [])}
-                    />
                     <div className="ui-search">
                         <AppIcon name="search" />
                         <input className="ui-input" type="search" placeholder="搜索" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
                     </div>
                     {selected.length > 0 && (
-                        <div className="batch-actions">
+                        <Flex gap="0.35rem">
+                            <div>已选择 {selected.length} 个</div>
                             <span className="tip-anchor">
                                 <button className="ui-btn small" type="button" onClick={addSelectedToCart}>
                                     <AppIcon name="cart" />
@@ -383,7 +379,7 @@ export const LibraryPage = () => {
                                     </button>
                                 </>
                             )}
-                        </div>
+                        </Flex>
                     )}
                     <div className="spacer" />
                     <DropdownMenu

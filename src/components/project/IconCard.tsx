@@ -225,10 +225,10 @@ export const IconCard = ({
                     width: iconSize + padding * 2,
                     height: iconSize + padding * 2,
                     padding,
-                    background: background || undefined,
                     color: color || undefined,
                 }}
             >
+                {background && <span className="preview-fill" style={{ background }} />}
                 <SvgPreview svg={icon.svg} size={iconSize} />
             </div>
             <div className="icon-card__meta">

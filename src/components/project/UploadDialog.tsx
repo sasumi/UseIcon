@@ -6,11 +6,11 @@ import { parseIconfontSource, parseSvgCollection } from "@/utils/iconfont";
 import { imageFileToSvg } from "@/utils/image";
 import { nameFromFileName, normalizeSvg } from "@/utils/svg";
 import { useDisplayStore } from "@/store/displayStore";
-import { useDialogForm } from "@/hooks/useDialogForm";
 import { AppIcon } from "@/components/common/AppIcon";
 import { FileDropZone } from "@/components/common/FileDropZone";
 import { SvgPreview } from "@/components/common/SvgPreview";
 import { TagEditor } from "@/components/common/TagEditor";
+import { IconCodeDialog } from "@/components/project/IconCodeDialog";
 
 /** 上传区接受的文件：SVG、位图、iconfont 下载包里的 js / svg 文本 */
 const ACCEPT = ".svg,image/svg+xml,image/png,image/jpeg,image/webp,image/gif,.js,.json,.txt,.css";
@@ -36,7 +36,7 @@ export const UploadDialog = ({
     onImported: () => void; // 导入完成回调
 }) => {
     const [candidates, setCandidates] = useState<IconCandidate[]>([]);
-    const [iconfontText, setIconfontText] = useState("");
+    const [codeOpen, setCodeOpen] = useState(false);
     const [prefix, setPrefix] = useState("");
     const [busy, setBusy] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -47,7 +47,7 @@ export const UploadDialog = ({
 
     const reset = () => {
         setCandidates([]);
-        setIconfontText("");
+        setCodeOpen(false);
         setPrefix("");
         setBusy(false);
         setSaving(false);
@@ -133,19 +133,20 @@ export const UploadDialog = ({
         }
     };
 
-    const parseClipboardText = () => {
-        if (!iconfontText.trim()) {
-            Toast.showWarning("请先粘贴 iconfont 的 symbol 内容或 SVG 字体内容");
-            return;
+    /** 代码解析：成功时并入候选列表，失败只提示不关闭对话框 */
+    const parseCode = (source: string): boolean => {
+        if (!source.trim()) {
+            Toast.showWarning("请先粘贴图标代码");
+            return false;
         }
-        const items = parseText(iconfontText);
+        const items = parseText(source);
         if (items.length === 0) {
             Toast.showWarning("没有解析到图标");
-            return;
+            return false;
         }
         mergeCandidates(items);
-        setIconfontText("");
         Toast.showSuccess(`解析到 ${items.length} 个图标`);
+        return true;
     };
 
     const toggleCandidate = (key: string, checked: boolean) => {
@@ -169,8 +170,6 @@ export const UploadDialog = ({
 
     const checkedCount = candidates.filter((item) => item.checked).length;
 
-    const { formProps, submitProps } = useDialogForm(parseClipboardText);
-
     const clearCandidates = () => {
         if (candidates.length === 0) {
             return;
@@ -191,6 +190,11 @@ export const UploadDialog = ({
             return;
         }
         setSaving(true);
+        const progress = Dialog.showProgress({
+            title: "正在导入图标",
+            message: `共 ${selected.length} 个图标，正在计算指纹并上传...`,
+            autoClose: false,
+        });
         try {
             const inputs = selected.map((item) => ({
                 className: `${prefix}${item.className}`,
@@ -198,16 +202,26 @@ export const UploadDialog = ({
                 tags: item.tags,
                 refId: item.refId,
             }));
-            if (target === "library") {
-                await api.library.createLibraryIcons(inputs);
-            } else {
-                await api.icons.createIcons(String(projectId), inputs);
+            const options = {
+                onProgress: (done: number, total: number) => progress.updater(done, total),
+                isAborted: progress.isAborted,
+            };
+            const created =
+                target === "library"
+                    ? await api.library.createLibraryIcons(inputs, options)
+                    : await api.icons.createIcons(String(projectId), inputs, options);
+            const aborted = progress.isAborted();
+            if (!aborted) {
+                progress.close();
             }
-            Toast.showSuccess(`已导入 ${selected.length} 个图标`);
+            Toast.showSuccess(aborted ? `已取消，导入 ${created.length} 个图标` : `已导入 ${created.length} 个图标`);
             reset();
             setOpen(false);
             onImported();
         } catch (error) {
+            if (!progress.isAborted()) {
+                progress.close();
+            }
             Toast.showError(error instanceof Error ? error.message : "导入失败");
         } finally {
             setSaving(false);
@@ -223,26 +237,9 @@ export const UploadDialog = ({
                         multiple
                         accept={ACCEPT}
                         onChange={pickFiles}
-                        icon={<AppIcon name="upload" />}
                         title="选择或拖入文件"
                         description="自动识别 SVG、PNG / JPG / WebP 图片、iconfont 下载包（iconfont.js / iconfont.svg）"
                     />
-
-                    <form {...formProps}>
-                        <div className="upload-paste">
-                            <input
-                                className="ui-input"
-                                aria-label="粘贴 iconfont 内容"
-                                placeholder="粘贴 iconfont 的 symbol 内容或 SVG 字体代码"
-                                value={iconfontText}
-                                onChange={(event) => setIconfontText(event.target.value)}
-                            />
-                            <button className="ui-btn small" {...submitProps}>
-                                <AppIcon name="refresh" />
-                                解析
-                            </button>
-                        </div>
-                    </form>
 
                     {busy && <LoadingHolder text="正在解析文件..." />}
 
@@ -286,10 +283,10 @@ export const UploadDialog = ({
                                                     width: previewSize,
                                                     height: previewSize,
                                                     padding: display.padding,
-                                                    background: display.background || undefined,
                                                     color: display.color || undefined,
                                                 }}
                                             >
+                                                {display.background && <span className="preview-fill" style={{ background: display.background }} />}
                                                 <SvgPreview svg={item.svg} size={display.size} />
                                             </div>
                                             <div className="icon-card__meta">
@@ -323,11 +320,16 @@ export const UploadDialog = ({
                 <button className="ui-btn small" type="button" disabled={candidates.length === 0} onClick={clearCandidates}>
                     清空
                 </button>
+                <button className="ui-btn small" type="button" onClick={() => setCodeOpen(true)}>
+                    <AppIcon name="file-code" />
+                    粘贴代码
+                </button>
                 <div className="spacer" />
                 <button className="ui-btn primary" type="button" disabled={saving || checkedCount === 0} onClick={() => void submit()}>
                     {saving ? "导入中..." : `导入 ${checkedCount} 个图标`}
                 </button>
             </Dialog.Action>
+            <IconCodeDialog open={codeOpen} setOpen={setCodeOpen} onParse={parseCode} />
         </Dialog>
     );
 };

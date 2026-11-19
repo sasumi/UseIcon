@@ -82,8 +82,24 @@ export const ProjectFormDialog = ({
                                 <Select
                                     key={accessType}
                                     items={[
-                                        { value: String(ACCESS_TYPE_TEAM), label: "团队项目", icon: <AppIcon name="lock" /> },
-                                        { value: String(ACCESS_TYPE_PUBLIC), label: "公开项目", icon: <AppIcon name="globe" /> },
+                                        {
+                                            value: String(ACCESS_TYPE_TEAM),
+                                            label: (
+                                                <>
+                                                    <AppIcon name="lock" />
+                                                    团队项目
+                                                </>
+                                            ),
+                                        },
+                                        {
+                                            value: String(ACCESS_TYPE_PUBLIC),
+                                            label: (
+                                                <>
+                                                    <AppIcon name="globe" />
+                                                    公开项目
+                                                </>
+                                            ),
+                                        },
                                     ]}
                                     value={String(accessType)}
                                     onChange={(value) => setAccessType(Number(value) === ACCESS_TYPE_PUBLIC ? ACCESS_TYPE_PUBLIC : ACCESS_TYPE_TEAM)}

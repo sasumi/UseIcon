@@ -166,12 +166,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         });
     },
     addIconCount: (projectId, delta) => {
-        set({
-            iconCounts: {
-                ...get().iconCounts,
-                [projectId]: Math.max(0, (get().iconCounts[projectId] ?? 0) + delta),
-            },
-        });
+        const { iconCounts } = get();
+        const known = iconCounts[projectId];
+        if (known === undefined) {
+            // 数量未知时直接回源，避免按增量算出错误数值
+            void get()
+                .refreshIconCount(projectId)
+                .catch(() => undefined);
+        } else {
+            set({ iconCounts: { ...iconCounts, [projectId]: Math.max(0, known + delta) } });
+        }
         if (delta !== 0) {
             broadcastProjectIconsChanged(projectId);
         }
@@ -179,6 +183,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     updateIcons: (updated) => {
         const map = new Map(updated.map((icon) => [icon.iconId, icon]));
         set({ icons: get().icons.map((icon) => (map.has(icon.iconId) ? { ...icon, ...map.get(icon.iconId) } : icon)) });
+        const projectId = get().current?.id;
+        if (projectId && updated.length > 0) {
+            broadcastProjectIconsChanged(projectId);
+        }
     },
     setIconsOrder: (orderedIds) => {
         const map = new Map(get().icons.map((icon) => [icon.iconId, icon]));

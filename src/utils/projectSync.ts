@@ -25,7 +25,7 @@ const getChannel = (): BroadcastChannel | null => {
 /** 通知其他窗口：指定项目的图标已增删 */
 export const broadcastProjectIconsChanged = (projectId: string) => {
     const target = getChannel();
-    if (!target) {
+    if (!target || !projectId) {
         return;
     }
     const message: ProjectIconsMessage = { projectId };

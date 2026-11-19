@@ -1,3 +1,4 @@
+import type { HTMLAttributes } from "react";
 import { LIBRARY_ICON_MAP } from "@/data/library";
 
 /**
@@ -5,25 +6,23 @@ import { LIBRARY_ICON_MAP } from "@/data/library";
  */
 export const AppIcon = ({
     name,
-    className,
     size,
-    title,
+    ...props
 }: {
     name: string; // 公共库图标名
-    className?: string; // 额外类名
     size?: number; // 像素尺寸
-    title?: string; // 无障碍标题
-}) => {
+} & Omit<HTMLAttributes<HTMLSpanElement>, "children">) => {
     const icon = LIBRARY_ICON_MAP[`lib-${name}`];
     if (!icon) {
+        console.warn(`AppIcon: 未找到图标 ${name}`);
         return null;
     }
     return (
         <span
-            className={`app-icon ${className || ""}`}
-            style={size ? { width: size, height: size } : undefined}
-            title={title}
-            aria-hidden={title ? undefined : true}
+            {...props}
+            className={`app-icon ${props.className || ""}`}
+            style={size ? { width: size, height: size, ...props.style } : props.style}
+            aria-hidden={props.title ? undefined : true}
             dangerouslySetInnerHTML={{ __html: icon.svg }}
         />
     );

@@ -1,4 +1,4 @@
-@use './mixins' as *;
+@use "./mixins" as *;
 
 // ---------- 鍏叡搴?----------
 .category-chips {
@@ -34,7 +34,6 @@
 .ui-search {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
     min-width: 14rem;
     flex: 0 1 24rem;
     padding-left: 0.5rem;
@@ -95,20 +94,25 @@
     }
 
     &__reset {
-        align-self: flex-start;
+        opacity: 0.5;
+        margin-left: auto;
+        font-size: var(--font-small);
     }
 }
 
 .display-preview__box {
+    position: relative;
     display: flex;
     flex: none;
     align-items: center;
     justify-content: center;
     border-radius: var(--element-radius);
-    @include checkerboard(8px, 4px);
+    // 半透明格纹：叠加半透明背景色时仍能看出棋盘格
+    @include checkerboard(8px, 4px, rgba(127, 127, 127, 0.24));
 }
 
 .display-preview__icon {
+    position: relative;
     display: block;
 }
 
@@ -137,10 +141,9 @@
     cursor: pointer;
 }
 
-.display-color {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
+// 颜色选择器按内容宽度展示，避免占满整行
+.display-row .minreactui-color-picker-trigger {
+    align-self: flex-start;
 }
 
 // 图标网格滚动加载状态（加载中 / 已全部加载 / 加载失败重试）

@@ -1,8 +1,7 @@
 import { useState, type ReactNode } from "react";
-import { Popover } from "minreact-ui";
+import { ColorPicker, Popover, SpanButton } from "minreact-ui";
 import { useDisplayStore } from "@/store/displayStore";
 import { AppIcon } from "@/components/common/AppIcon";
-import { ColorPicker } from "@/components/common/ColorPicker";
 
 const SIZE_RANGE = { min: 12, max: 64, step: 2 };
 const PADDING_RANGE = { min: 0, max: 28, step: 1 };
@@ -18,7 +17,7 @@ const DisplayRow = ({ label, hint, children }: { label: string; hint?: string; c
     </div>
 );
 
-/** 颜色选择：色板 + 回退按钮 */
+/** 颜色选择：色板 + 清空，支持半透明（#rrggbbaa） */
 const ColorField = ({
     value,
     fallback,
@@ -27,17 +26,17 @@ const ColorField = ({
 }: {
     value: string; // 当前颜色，空表示未设置
     fallback: string; // 未设置时色板显示的初始色
-    fallbackText: string; // 回退按钮文案
+    fallbackText: string; // 清空按钮文案
     onChange: (value: string) => void;
 }) => (
-    <div className="display-color">
-        <ColorPicker value={value} fallback={fallback} title={value || fallbackText} onChange={onChange} />
-        {value && (
-            <button className="ui-btn small button-tonal" type="button" onClick={() => onChange("")}>
-                {fallbackText}
-            </button>
-        )}
-    </div>
+    <ColorPicker
+        value={value}
+        fallback={fallback}
+        allowAlpha
+        emptyLabel={fallbackText}
+        title={value || fallbackText}
+        onChange={onChange}
+    />
 );
 
 /** 图标显示控制面板：尺寸 / 内边距 / 图标颜色 / 背景色（参数全局生效） */
@@ -56,10 +55,10 @@ export const DisplayPanel = () => {
                     style={{
                         width: previewSize,
                         height: previewSize,
-                        background: display.background || undefined,
                         color: display.color || undefined,
                     }}
                 >
+                    {display.background && <span className="preview-fill" style={{ background: display.background }} />}
                     <svg
                         className="display-preview__icon"
                         style={{ width: display.size, height: display.size }}
@@ -98,24 +97,14 @@ export const DisplayPanel = () => {
                 />
             </DisplayRow>
             <DisplayRow label="图标颜色" hint="默认跟随文字色">
-                <ColorField
-                    value={display.color}
-                    fallback="#1f1f1f"
-                    fallbackText="默认"
-                    onChange={(color) => updateDisplay({ color })}
-                />
+                <ColorField value={display.color} fallback="#1f1f1f" fallbackText="默认" onChange={(color) => updateDisplay({ color })} />
             </DisplayRow>
             <DisplayRow label="显示背景" hint="默认透明">
-                <ColorField
-                    value={display.background}
-                    fallback="#f3f3f3"
-                    fallbackText="透明"
-                    onChange={(background) => updateDisplay({ background })}
-                />
+                <ColorField value={display.background} fallback="#f3f3f3" fallbackText="透明" onChange={(background) => updateDisplay({ background })} />
             </DisplayRow>
-            <button className="ui-btn button-small display-panel__reset" type="button" onClick={resetDisplay}>
+            <SpanButton onClick={resetDisplay} className="display-panel__reset">
                 重置为默认
-            </button>
+            </SpanButton>
         </div>
     );
 };
@@ -127,11 +116,7 @@ export const DisplayControl = () => {
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <Popover.Trigger>
-                <button
-                    className={`ui-icon-btn small ${open ? "active" : ""}`}
-                    type="button"
-                    title="显示设置：大小 / 内边距 / 颜色 / 背景"
-                >
+                <button className={`ui-icon-btn small ${open ? "active" : ""}`} type="button" title="显示设置：大小 / 内边距 / 颜色 / 背景">
                     <AppIcon name="eye" />
                 </button>
             </Popover.Trigger>

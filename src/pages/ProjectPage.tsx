@@ -20,6 +20,7 @@ import { mergeCategories } from "@/utils/category";
 import { favoriteKeyOf } from "@/utils/iconDedupe";
 import { sortIconsBySimilarity } from "@/utils/iconMatcher";
 import { getProjectAccess } from "@/utils/permission";
+import { broadcastProjectIconsChanged } from "@/utils/projectSync";
 import { renderIconCode } from "@/utils/svg";
 import { AppIcon } from "@/components/common/AppIcon";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -40,6 +41,7 @@ import { ProjectMembersDialog } from "@/components/project/ProjectMembersDialog"
 import { ProjectTemplateDialog } from "@/components/project/ProjectTemplateDialog";
 import { UploadDialog } from "@/components/project/UploadDialog";
 import { Divider } from "@/components/common/Divider";
+import { Flex } from "@/components/common/Flex";
 
 type SortMode = "default" | "name-asc" | "name-desc" | "smart" | "custom";
 
@@ -328,6 +330,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
     const afterChange = () => {
         setSelected([]);
         void refreshCurrent();
+        broadcastProjectIconsChanged(activeProjectId);
     };
 
     const removeSelected = () => {
@@ -490,7 +493,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                         {access.canEdit && (
                             <button className="ui-btn small primary" type="button" onClick={() => setUploadOpen(true)}>
                                 <AppIcon name="upload" />
-                                上传图标
+                                上传
                             </button>
                         )}
                         <ExportMenu icons={selectedIcons.length > 0 ? selectedIcons : icons} projectName={project.name} size={iconSize} label="导出" />
@@ -511,7 +514,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 <div className="content-toolbar project-toolbar">
                     <SelectAllToggle selected={selectedCount} total={filtered.length} onChange={toggleSelectAll} />
                     {selected.length > 0 && (
-                        <div className="batch-actions">
+                        <Flex gap="0.35rem">
                             <span className="tip-anchor">
                                 <button className="ui-btn small" type="button" onClick={addSelectedToCart}>
                                     <AppIcon name="cart" />
@@ -536,7 +539,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                                 <AppIcon name="trash" />
                                 删除
                             </button>
-                        </div>
+                        </Flex>
                     )}
                     <div className="spacer" />
                     <div className="ui-search project-toolbar__search">
@@ -589,7 +592,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                         {access.canEdit && (
                             <div className="toolbar">
                                 <button className="ui-btn primary" type="button" onClick={() => setUploadOpen(true)}>
-                                    上传图标
+                                    上传
                                 </button>
                                 <button className="ui-btn" type="button" onClick={() => setPickOpen(true)}>
                                     从公共库添加

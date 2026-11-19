@@ -186,15 +186,22 @@ export const computeIconPhash = async (svg: string): Promise<string> => {
 /**
  * 批量计算图标指纹（顺序与入参一致，失败项为空串）
  * @param svgs SVG 源码列表
+ * @param onProgress 单个图标计算完成后的进度回调
  */
-export const computeIconPhashes = async (svgs: string[]): Promise<string[]> => {
+export const computeIconPhashes = async (
+    svgs: string[],
+    onProgress?: (done: number, total: number) => void,
+): Promise<string[]> => {
     const result = new Array<string>(svgs.length).fill("");
     let cursor = 0;
+    let done = 0;
     const worker = async () => {
         while (cursor < svgs.length) {
             const index = cursor;
             cursor += 1;
             result[index] = await computeIconPhash(svgs[index]);
+            done += 1;
+            onProgress?.(done, svgs.length);
         }
     };
     await Promise.all(Array.from({ length: Math.min(PHASH_CONCURRENCY, svgs.length) }, worker));

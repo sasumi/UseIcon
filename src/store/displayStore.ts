@@ -5,11 +5,11 @@ import { create } from "zustand";
 export interface IconDisplay {
     size: number; // 图标显示尺寸（px）
     padding: number; // 图标内边距（px）
-    color: string; // 图标颜色，空表示沿用 currentColor
-    background: string; // 预览背景色，空表示透明
+    color: string; // 图标颜色，空表示沿用 currentColor，支持 #rrggbbaa 半透明
+    background: string; // 预览背景色，空表示透明，支持 #rrggbbaa 半透明
 }
 
-export const DEFAULT_ICON_DISPLAY: IconDisplay = { size: 24, padding: 9, color: "", background: "" };
+export const DEFAULT_ICON_DISPLAY: IconDisplay = { size: 32, padding: 10, color: "", background: "" };
 
 /** 旧版按页面分开保存的键，读取时兼容迁移 */
 const LEGACY_STORAGE_KEY = "useicon:library-display";
