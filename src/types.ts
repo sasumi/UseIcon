@@ -121,8 +121,17 @@ export interface IconOptimizeOptions {
     size?: number | null; // 统一 viewBox 尺寸，null 表示不改
     useCurrentColor?: boolean; // 将固定颜色替换为 currentColor
     strokeWidth?: number | null; // 统一线条粗细，null 表示不改
-    precision?: number; // path 数字精度（小数位）
+    precision?: number; // path 数字精度（小数位），负数表示不调整
     removeFill?: boolean; // 线性图标移除 fill 填充
+    opticalCenter?: boolean; // 其它调整完成后自动优化视觉中心
+}
+
+/** 批量优化预览所需的图标数据 */
+export interface OptimizeIconSource {
+    iconId: string; // 图标 ID
+    className: string; // 图标类名
+    tags: string[]; // 标签
+    svg: string; // 原始 SVG
 }
 
 /** 新建图标入参 */

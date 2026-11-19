@@ -493,7 +493,7 @@ export const LibraryPage = () => {
             <BatchOptimizeDialog
                 open={optimizeOpen}
                 setOpen={setOptimizeOpen}
-                iconIds={selected}
+                icons={selectedIcons}
                 defaultSize={24}
                 optimize={(_, options) => api.library.optimizeLibraryIcons(selectedIcons, options)}
                 onDone={() => {

@@ -713,7 +713,7 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
             <BatchOptimizeDialog
                 open={optimizeOpen}
                 setOpen={setOptimizeOpen}
-                iconIds={selected}
+                icons={selectedIcons}
                 defaultSize={iconSize}
                 onDone={(updated) => {
                     updateIcons(updated);

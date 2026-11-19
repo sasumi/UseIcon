@@ -1,5 +1,6 @@
 import type { IconInput, IconItem, IconOptimizeOptions, BatchCreateOptions } from "@/types";
 import { computeIconPhash, computeIconPhashes } from "@/utils/iconMatcher";
+import { centerSvgOptically } from "@/utils/opticalCenter";
 import { normalizeSvg, optimizeSvg, sanitizeIconName } from "@/utils/svg";
 import { ApiError, iconGetJSON, iconPostJSON } from "./http";
 
@@ -117,13 +118,18 @@ export const optimizeIcons = async (iconIds: string[], options: IconOptimizeOpti
     }
     const icons = await listIconsByIds(iconIds);
     const items: { iconId: string; svg: string; phash?: string }[] = [];
-    icons.forEach((icon) => {
+    for (const icon of icons) {
         try {
-            items.push({ iconId: icon.iconId, svg: optimizeSvg(icon.svg, options) });
+            let svg = optimizeSvg(icon.svg, options);
+            if (options.opticalCenter) {
+                // 光学居中放在最后，避免与尺寸 / 描边等调整互相覆盖
+                svg = await centerSvgOptically(svg);
+            }
+            items.push({ iconId: icon.iconId, svg });
         } catch (error) {
             console.warn(`图标 ${icon.className} 优化失败`, error);
         }
-    });
+    }
     if (items.length === 0) {
         throw new ApiError("没有图标被成功优化", "invalid-svg");
     }

@@ -205,6 +205,20 @@ export const normalizeSvg = (source: string, options: { size?: number | null } =
 };
 
 /**
+ * 读取 SVG 画布边长：取 viewBox 宽高中较大者，缺省 24
+ */
+export const readSvgCanvasSize = (source: string): number => {
+    const match = /viewBox\s*=\s*["']([^"']+)["']/i.exec(source);
+    if (match) {
+        const parts = match[1].trim().split(/[\s,]+/).map(Number);
+        if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+            return Math.max(parts[2], parts[3]);
+        }
+    }
+    return 24;
+};
+
+/**
  * 批量优化 SVG（尺寸 / currentColor / 线条粗细 / 精度 / 清理 id）
  */
 export const optimizeSvg = (source: string, options: IconOptimizeOptions = {}): string => {

@@ -828,20 +828,217 @@ body.is-drag-selecting {
 }
 
 // ---------- 批量优化 ----------
+// 左侧参数侧栏 + 右侧优化前后对比列表
 .optimize-dialog {
-    .minreactui-range-selector {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.9em;
+    overflow: hidden;
+    height: clamp(18rem, calc(100vh - 16em), 30rem);
+
+    &__side {
+        display: flex;
+        flex: 0 0 21em;
+        flex-direction: column;
+        gap: 0.9em;
+        min-width: 0;
+        padding-right: 0.9em;
+        border-right: 1px solid var(--color-border);
+        overflow: auto;
+        @include scrollbar(8px);
+
+        .ui-form-item__label {
+            width: 10em;
+        }
+
+        .ui-form-item__label,
+        .ui-form-item__content {
+            padding: 0.45em 0.4em;
+        }
+
+        .minreactui-range-selector {
+            gap: 0.3em;
+
+            input[type='range'] {
+                width: 4.5em;
+            }
+        }
+    }
+}
+
+.optimize-dialog .ui-form-item__check {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    cursor: pointer;
+
+    input[type='checkbox'] {
+        flex: none;
+        margin: 0;
+    }
+}
+
+.optimize-preview {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+
+    &__head {
+        display: flex;
         align-items: center;
-        gap: 0.4em;
+        gap: 0.5em;
+        flex: none;
+        padding: 0 0.35em 0.35em;
+        border-bottom: 1px solid var(--color-border);
+        color: var(--color-secondary);
+        font-size: 0.78rem;
+        font-weight: 600;
 
-        input[type='range'] {
-            width: 7em;
+        > span {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+    }
+
+    &__zoom {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 0.35em;
+    }
+
+    &__zoom-label {
+        color: var(--color-secondary);
+        font-size: 0.72rem;
+        font-weight: 400;
+        white-space: nowrap;
+    }
+
+    &__failed {
+        margin-left: 0.5em;
+        color: var(--color-danger);
+        font-style: normal;
+        font-weight: 400;
+    }
+
+    // 生成进度浮在「修改前 / 修改后」两栏中间，不占用列表空间
+    &__progress {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        max-width: 80%;
+        padding: 0.45em 0.8em;
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--color-background) 88%, transparent);
+        box-shadow: var(--panel-shadow-lite);
+        backdrop-filter: blur(4px);
+        color: var(--color-secondary);
+        font-size: 0.72rem;
+        transform: translate(-50%, -50%);
+
+        progress {
+            flex: 0 0 7em;
+            height: 0.35em;
+            accent-color: var(--color-accent);
         }
 
-        .rs-input {
-            min-width: 2.2em;
-            font-size: 0.78rem;
-            text-align: right;
+        > span {
+            white-space: nowrap;
         }
+    }
+
+    &__list {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: 0.15em;
+        min-height: 0;
+        margin: 0;
+        padding: 0.3em 0;
+        overflow: auto;
+        list-style: none;
+        @include scrollbar(8px);
+    }
+
+    &__row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5em;
+        padding: 0.25em 0.35em;
+        border-radius: var(--element-radius);
+
+        &:nth-child(even) {
+            background: color-mix(in srgb, var(--color-background-lite) 60%, transparent);
+        }
+    }
+
+    &__cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        min-width: 0;
+
+        &.is-pending .optimize-preview__thumb {
+            opacity: 0.45;
+        }
+
+        &.is-error .optimize-preview__tags {
+            color: var(--color-danger);
+        }
+    }
+
+    &__thumb {
+        position: relative;
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        border-radius: 4px;
+        @include checkerboard(6px, 3px);
+
+        // 绿色描边标记 SVG 画布（viewBox）边缘
+        .svg-preview {
+            flex: none;
+            border-radius: 2px;
+            box-shadow: inset 0 0 0 1px var(--color-success);
+        }
+    }
+
+    &__meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1em;
+        min-width: 0;
+    }
+
+    &__name {
+        color: var(--color-foreground);
+        font-family: var(--font-code);
+        font-size: 0.72rem;
+        @include ellipsis;
+    }
+
+    &__tags {
+        color: var(--color-secondary);
+        font-size: 0.66rem;
+        min-height: 1em;
+        @include ellipsis;
+    }
+
+    &__empty {
+        padding: 2em 0;
+        color: var(--color-secondary);
+        font-size: var(--font-small);
+        text-align: center;
     }
 }
 

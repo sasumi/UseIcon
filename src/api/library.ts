@@ -1,5 +1,6 @@
 import type { IconInput, IconOptimizeOptions, LibraryCategoryCount, LibraryIcon, PageResult, BatchCreateOptions } from "@/types";
 import { computeIconPhashes } from "@/utils/iconMatcher";
+import { centerSvgOptically } from "@/utils/opticalCenter";
 import { normalizeSvg, optimizeSvg, sanitizeIconName } from "@/utils/svg";
 import { ApiError, iconGetJSON, iconPostJSON } from "./http";
 
@@ -154,17 +155,22 @@ export const deleteLibraryIcons = (iconIds: string[]): Promise<void> => {
 };
 
 /** 批量优化公共库图标（SVG 处理在浏览器完成，结果一次性提交） */
-export const optimizeLibraryIcons = (icons: LibraryIcon[], options: IconOptimizeOptions): Promise<LibraryIcon[]> => {
+export const optimizeLibraryIcons = async (icons: LibraryIcon[], options: IconOptimizeOptions): Promise<LibraryIcon[]> => {
     const items: (LibraryIconPatch & { iconId: string })[] = [];
-    icons.forEach((icon) => {
+    for (const icon of icons) {
         try {
-            items.push({ iconId: icon.iconId, svg: optimizeSvg(icon.svg, options) });
+            let svg = optimizeSvg(icon.svg, options);
+            if (options.opticalCenter) {
+                // 光学居中放在最后，避免与尺寸 / 描边等调整互相覆盖
+                svg = await centerSvgOptically(svg);
+            }
+            items.push({ iconId: icon.iconId, svg });
         } catch (error) {
             console.warn(`公共库图标 ${icon.className} 优化失败`, error);
         }
-    });
+    }
     if (items.length === 0) {
-        return Promise.reject(new ApiError("没有图标被成功优化", "invalid-svg"));
+        throw new ApiError("没有图标被成功优化", "invalid-svg");
     }
     return saveLibraryIcons(items);
 };
