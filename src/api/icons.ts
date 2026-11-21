@@ -141,6 +141,20 @@ export const optimizeIcons = async (iconIds: string[], options: IconOptimizeOpti
     return (data?.list ?? []) as IconItem[];
 };
 
+/** 批量修改分类（空字符串表示清除分类） */
+export const updateIconsCategory = (iconIds: string[], category: string): Promise<IconItem[]> => {
+    if (iconIds.length === 0) {
+        return Promise.reject(new ApiError("请先选择图标"));
+    }
+    const value = category.trim();
+    return listIconsByIds(iconIds)
+        .then((icons) => {
+            const items = icons.map((icon) => ({ iconId: icon.iconId, category: value }));
+            return iconPostJSON("icon/saveBatch", { items });
+        })
+        .then((data) => (data?.list ?? []) as IconItem[]);
+};
+
 /** 批量重命名（前缀 / 后缀 / 查找替换，重名由后台自动加序号） */
 export const renameIcons = (
     iconIds: string[],

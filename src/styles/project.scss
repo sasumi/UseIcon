@@ -865,8 +865,8 @@
     }
 }
 
-// 优化对话框内的重命名参数（窄栏竖排）
-.optimize-rename {
+// 优化对话框内的重命名 / 分类参数（窄栏竖排）
+.optimize-field {
     display: flex;
     flex-direction: column;
     gap: 0.45em;
@@ -1089,6 +1089,21 @@
         @include ellipsis;
 
         &.is-renamed {
+            color: var(--color-accent);
+        }
+    }
+
+    &__category {
+        align-self: flex-start;
+        max-width: 100%;
+        padding: 0 0.3em;
+        border-radius: 3px;
+        background: color-mix(in srgb, var(--color-background-lite) 65%, transparent);
+        color: var(--color-secondary);
+        font-size: 0.62rem;
+        @include ellipsis;
+
+        &.is-changed {
             color: var(--color-accent);
         }
     }

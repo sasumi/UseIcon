@@ -4,8 +4,10 @@ import { DIALOG_SIZE_LARGE, Dialog, RangeInput, Select, Toast } from "minreact-u
 import { api } from "@/api";
 import { useDialogForm } from "@/hooks/useDialogForm";
 import type { IconOptimizeOptions, IconPatch, IconRenameOptions, OptimizeIconSource } from "@/types";
+import { mergeCategories, rememberCategory } from "@/utils/category";
 import { centerSvgOptically } from "@/utils/opticalCenter";
 import { optimizeSvg, readSvgCanvasSize } from "@/utils/svg";
+import { CategoryInput } from "@/components/common/CategoryInput";
 import { SelectAllToggle } from "@/components/common/SelectAllToggle";
 import { SvgPreview } from "@/components/common/SvgPreview";
 
@@ -78,6 +80,8 @@ const PreviewCell = ({
     canvas,
     excluded,
     name,
+    category,
+    categoryChanged,
 }: {
     icon: OptimizeIconSource; // 图标信息
     svg?: string; // 待展示的 SVG，缺省表示尚未生成
@@ -85,6 +89,8 @@ const PreviewCell = ({
     canvas: number; // SVG 画布显示边长（px）
     excluded?: boolean; // 该图标本次不应用更改
     name?: string; // 更改后的类名，缺省显示原类名
+    category?: string; // 更改后的分类，缺省显示原分类
+    categoryChanged?: boolean; // 分类是否有变化
 }) => (
     <div className={`optimize-preview__cell${status ? ` is-${status}` : ""}${excluded ? " is-excluded" : ""}`}>
         <span className="optimize-preview__thumb" style={{ width: canvas, height: canvas }}>
@@ -97,6 +103,14 @@ const PreviewCell = ({
             >
                 {name ?? icon.className}
             </span>
+            {category || categoryChanged ? (
+                <span
+                    className={`optimize-preview__category${categoryChanged ? " is-changed" : ""}`}
+                    title={category ? `分类：${category}` : "清空分类"}
+                >
+                    {category || "清空分类"}
+                </span>
+            ) : null}
             <span className="optimize-preview__tags" title={icon.tags.join(" / ")}>
                 {status === "pending" ? "生成中…" : status === "error" ? "优化失败" : icon.tags.join(" / ") || "-"}
             </span>
@@ -104,23 +118,27 @@ const PreviewCell = ({
     </div>
 );
 
-/** 批量优化图标（项目图标与公共库图标共用）：左侧调整优化与重命名参数，右侧对比修改前后 */
+/** 批量修改图标（项目图标与公共库图标共用）：左侧调整优化 / 重命名 / 分类参数，右侧对比修改前后 */
 export const BatchOptimizeDialog = ({
     open,
     setOpen,
     icons,
     defaultSize,
+    categories,
     onDone,
     optimize = api.icons.optimizeIcons,
     rename = api.icons.renameIcons,
+    updateCategory = api.icons.updateIconsCategory,
 }: {
     open: boolean; // 是否打开
     setOpen: (open: boolean) => void; // 显隐控制
     icons: OptimizeIconSource[]; // 待优化图标（含原始 SVG，用于本地预览）
     defaultSize: number; // 默认尺寸
+    categories?: string[]; // 可选分类（已有分类）
     onDone: (icons: IconPatch[]) => void; // 应用后的完成回调
     optimize?: (iconIds: string[], options: IconOptimizeOptions) => Promise<IconPatch[]>; // 保存实现，默认走项目图标接口
     rename?: (iconIds: string[], options: IconRenameOptions) => Promise<IconPatch[]>; // 重命名实现，默认走项目图标接口
+    updateCategory?: (iconIds: string[], category: string) => Promise<IconPatch[]>; // 分类修改实现，默认走项目图标接口
 }) => {
     const [sizeEnabled, setSizeEnabled] = useState(true);
     const [size, setSize] = useState(() => clamp(defaultSize, SIZE_MIN, SIZE_MAX));
@@ -136,6 +154,8 @@ export const BatchOptimizeDialog = ({
     const [renameSuffix, setRenameSuffix] = useState("");
     const [renameFind, setRenameFind] = useState("");
     const [renameReplace, setRenameReplace] = useState("");
+    const [categoryEnabled, setCategoryEnabled] = useState(false);
+    const [category, setCategory] = useState("");
     const [zoom, setZoom] = useState(2);
     const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
     const [saving, setSaving] = useState(false);
@@ -147,6 +167,18 @@ export const BatchOptimizeDialog = ({
     const fillToggleId = useId();
     const centerToggleId = useId();
     const renameToggleId = useId();
+    const categoryToggleId = useId();
+
+    // 所选图标分类一致时预填，方便在原有分类上微调
+    const initialCategory = useMemo(() => {
+        const first = icons[0]?.category ?? "";
+        return icons.every((icon) => (icon.category ?? "") === first) ? first : "";
+    }, [icons]);
+
+    const categoryOptions = useMemo(
+        () => mergeCategories(categories, icons.flatMap((icon) => (icon.category ? [icon.category] : []))),
+        [categories, icons],
+    );
 
     useEffect(() => {
         if (open) {
@@ -164,6 +196,8 @@ export const BatchOptimizeDialog = ({
             setRenameSuffix("");
             setRenameFind("");
             setRenameReplace("");
+            setCategoryEnabled(false);
+            setCategory(initialCategory);
             setZoom(2);
             setExcluded(new Set());
         }
@@ -186,6 +220,8 @@ export const BatchOptimizeDialog = ({
 
     const hasRenameRule = Boolean(renamePrefix || renameSuffix || renameFind);
     const renameApplied = renameEnabled && hasRenameRule;
+    const categoryApplied = categoryEnabled;
+    const categoryValue = category.trim();
 
     /** 按后台规则预览新类名：先查找替换，再套前缀 / 后缀 */
     const renamedName = (className: string): string => {
@@ -301,7 +337,7 @@ export const BatchOptimizeDialog = ({
             Toast.showError("请至少填写前缀、后缀或查找内容");
             return;
         }
-        if (!hasOptimizeAction && !renameApplied) {
+        if (!hasOptimizeAction && !renameApplied && !categoryApplied) {
             Toast.showError("请至少选择一项更改");
             return;
         }
@@ -317,6 +353,10 @@ export const BatchOptimizeDialog = ({
             }
             if (renameApplied) {
                 collect(await rename(iconIds, { prefix: renamePrefix, suffix: renameSuffix, find: renameFind, replace: renameReplace }));
+            }
+            if (categoryApplied) {
+                collect(await updateCategory(iconIds, category));
+                rememberCategory(category);
             }
             const updated = Array.from(merged.values());
             Toast.showSuccess(`已更新 ${updated.length} 个图标`);
@@ -413,8 +453,8 @@ export const BatchOptimizeDialog = ({
                                 </div>
                                 <div className="ui-form-group">
                                     <div className="ui-form-group__title">重命名</div>
-                                    <div className="optimize-rename">
-                                        <label className="optimize-rename__toggle" htmlFor={renameToggleId}>
+                                    <div className="optimize-field">
+                                        <label className="optimize-field__toggle" htmlFor={renameToggleId}>
                                             <input
                                                 id={renameToggleId}
                                                 type="checkbox"
@@ -423,37 +463,62 @@ export const BatchOptimizeDialog = ({
                                             />
                                             <span>批量重命名类名</span>
                                         </label>
-                                        <input
-                                            className="ui-input"
-                                            placeholder="添加前缀，例如 project-"
-                                            value={renamePrefix}
-                                            disabled={!renameEnabled}
-                                            onChange={(event) => setRenamePrefix(event.target.value)}
-                                        />
-                                        <input
-                                            className="ui-input"
-                                            placeholder="添加后缀，例如 -outline"
-                                            value={renameSuffix}
-                                            disabled={!renameEnabled}
-                                            onChange={(event) => setRenameSuffix(event.target.value)}
-                                        />
-                                        <div className="optimize-rename__replace">
+                                        {renameEnabled ? (
+                                            <>
+                                                <input
+                                                    className="ui-input"
+                                                    placeholder="添加前缀，例如 project-"
+                                                    value={renamePrefix}
+                                                    onChange={(event) => setRenamePrefix(event.target.value)}
+                                                />
+                                                <input
+                                                    className="ui-input"
+                                                    placeholder="添加后缀，例如 -outline"
+                                                    value={renameSuffix}
+                                                    onChange={(event) => setRenameSuffix(event.target.value)}
+                                                />
+                                                <div className="optimize-field__replace">
+                                                    <input
+                                                        className="ui-input"
+                                                        placeholder="查找"
+                                                        value={renameFind}
+                                                        onChange={(event) => setRenameFind(event.target.value)}
+                                                    />
+                                                    <input
+                                                        className="ui-input"
+                                                        placeholder="替换为"
+                                                        value={renameReplace}
+                                                        onChange={(event) => setRenameReplace(event.target.value)}
+                                                    />
+                                                </div>
+                                                <p className="ui-note">重名时自动追加序号，例如 icon-2。</p>
+                                            </>
+                                        ) : null}
+                                    </div>
+                                </div>
+                                <div className="ui-form-group">
+                                    <div className="ui-form-group__title">分类</div>
+                                    <div className="optimize-field">
+                                        <label className="optimize-field__toggle" htmlFor={categoryToggleId}>
                                             <input
-                                                className="ui-input"
-                                                placeholder="查找"
-                                                value={renameFind}
-                                                disabled={!renameEnabled}
-                                                onChange={(event) => setRenameFind(event.target.value)}
+                                                id={categoryToggleId}
+                                                type="checkbox"
+                                                checked={categoryEnabled}
+                                                onChange={(event) => setCategoryEnabled(event.target.checked)}
                                             />
-                                            <input
-                                                className="ui-input"
-                                                placeholder="替换为"
-                                                value={renameReplace}
-                                                disabled={!renameEnabled}
-                                                onChange={(event) => setRenameReplace(event.target.value)}
-                                            />
-                                        </div>
-                                        <p className="ui-note">重名时自动追加序号，例如 icon-2。</p>
+                                            <span>批量修改分类</span>
+                                        </label>
+                                        {categoryEnabled ? (
+                                            <>
+                                                <CategoryInput
+                                                    value={category}
+                                                    onChange={setCategory}
+                                                    options={categoryOptions}
+                                                    placeholder="输入或选择分类"
+                                                />
+                                                <p className="ui-note">留空则清空分类（公共库会归入默认分类）。</p>
+                                            </>
+                                        ) : null}
                                     </div>
                                 </div>
                             </div>
@@ -515,7 +580,7 @@ export const BatchOptimizeDialog = ({
                                                             }
                                                         />
                                                     </label>
-                                                    <PreviewCell icon={icon} svg={icon.svg} canvas={beforeCanvas} />
+                                                    <PreviewCell icon={icon} svg={icon.svg} canvas={beforeCanvas} category={icon.category} />
                                                     <PreviewCell
                                                         icon={icon}
                                                         svg={preview?.svg}
@@ -523,6 +588,10 @@ export const BatchOptimizeDialog = ({
                                                         canvas={afterCanvas}
                                                         excluded={isExcluded}
                                                         name={renameApplied && !isExcluded ? renamedName(icon.className) : undefined}
+                                                        category={categoryApplied && !isExcluded ? categoryValue : icon.category}
+                                                        categoryChanged={
+                                                            categoryApplied && !isExcluded && categoryValue !== (icon.category ?? "")
+                                                        }
                                                     />
                                                 </li>
                                             );

@@ -146,6 +146,12 @@ export const updateLibraryIcon = (iconId: string, patch: LibraryIconPatch): Prom
     return saveLibraryIcons([item]).then((list) => list[0]);
 };
 
+/** 批量修改公共库图标分类（空字符串表示清除分类） */
+export const updateLibraryIconsCategory = (icons: LibraryIcon[], category: string): Promise<LibraryIcon[]> => {
+    const value = category.trim();
+    return saveLibraryIcons(icons.map((icon) => ({ iconId: icon.iconId, category: value })));
+};
+
 /** 批量删除公共库图标 */
 export const deleteLibraryIcons = (iconIds: string[]): Promise<void> => {
     if (iconIds.length === 0) {

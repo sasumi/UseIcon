@@ -700,8 +700,10 @@ export const ProjectPage = ({ projectId }: { projectId?: string }) => {
                 setOpen={setOptimizeOpen}
                 icons={selectedIcons}
                 defaultSize={iconSize}
+                categories={categoryOptions}
                 onDone={(updated) => {
                     updateIcons(updated);
+                    void refreshCurrent();
                     setSelected([]);
                 }}
             />

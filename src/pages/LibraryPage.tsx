@@ -480,6 +480,7 @@ export const LibraryPage = () => {
                 setOpen={setOptimizeOpen}
                 icons={selectedIcons}
                 defaultSize={24}
+                categories={categories}
                 optimize={(iconIds, options) => {
                     const ids = new Set(iconIds);
                     return api.library.optimizeLibraryIcons(
@@ -492,6 +493,13 @@ export const LibraryPage = () => {
                     return api.library.renameLibraryIcons(
                         selectedIcons.filter((icon) => ids.has(icon.iconId)),
                         options,
+                    );
+                }}
+                updateCategory={(iconIds, category) => {
+                    const ids = new Set(iconIds);
+                    return api.library.updateLibraryIconsCategory(
+                        selectedIcons.filter((icon) => ids.has(icon.iconId)),
+                        category,
                     );
                 }}
                 onDone={() => {

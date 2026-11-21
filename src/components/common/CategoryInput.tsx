@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { DataListInput } from "minreact-ui";
+import { COMMON_CATEGORIES } from "@/data/library";
 import { mergeCategories, readCategoryHistory } from "@/utils/category";
 
 /**
@@ -22,8 +23,8 @@ export const CategoryInput = ({
 }) => {
     const [history, setHistory] = useState<string[]>(readCategoryHistory);
 
-    // 历史分类优先（最近用过的排前面），其次是已有分类
-    const candidates = useMemo(() => mergeCategories(history, options), [history, options]);
+    // 历史分类优先（最近用过的排前面），其次是已有分类与内置分类
+    const candidates = useMemo(() => mergeCategories(history, options, COMMON_CATEGORIES), [history, options]);
 
     return (
         <DataListInput

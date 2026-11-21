@@ -138,6 +138,7 @@ export interface IconRenameOptions {
 export interface OptimizeIconSource {
     iconId: string; // 图标 ID
     className: string; // 图标类名
+    category?: string; // 分类
     tags: string[]; // 标签
     svg: string; // 原始 SVG
 }
