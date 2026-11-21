@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 const IGNORE_SELECTOR = [
     ".icon-card",
     "button",
+    ".ui-btn",
     "a",
     "input",
     "select",

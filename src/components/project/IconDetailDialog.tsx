@@ -337,7 +337,7 @@ export const IconDetailDialog = ({
             <Dialog.Action align="right">
                 {canEdit && onDelete && (
                     <div style={{ display: "flex", alignItems: "center" }}>
-                        <button className="ui-btn button-tonal danger" type="button" onClick={remove}>
+                        <button className="ui-btn small button-tonal danger" type="button" onClick={remove}>
                             <AppIcon name="trash" />
                             删除
                         </button>

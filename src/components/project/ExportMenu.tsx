@@ -76,10 +76,10 @@ export const ExportMenu = ({
             onChange={(value) => void handle(value)}
             trigger={
                 trigger || (
-                    <span className="ui-btn small">
+                    <button type="button" className="ui-btn small">
                         <AppIcon name="download" />
                         {label}
-                    </span>
+                    </button>
                 )
             }
         />
